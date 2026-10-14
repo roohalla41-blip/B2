@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
 
     private static final String APP_URL =
-            "https://preview.xcodx.io/?_tok=d9e00b59cb124a09";
+            "https://motherapp.base44.app";
 
     private static final String CHROME_UA =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
