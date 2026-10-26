@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import {
   loadOperators, loadRechargeAmounts, loadPackages, loadWallets,
+  submitRequest,
 } from '@/lib/rechargeMockData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,24 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Smartphone, Wifi, Wallet, Send, Package,
-  AlertTriangle, RefreshCw, ArrowRight,
+  Smartphone, Wifi, Wallet, Send, AlertTriangle, RefreshCw,
 } from 'lucide-react';
 import ConfirmDialog from '@/components/customer/recharge/ConfirmDialog';
-import { AmountInput } from '@/components/sarraaf/Fields';
 import SuccessSheet from '@/components/customer/recharge/SuccessSheet';
 
-const WALLET_LABELS = {
-  AFN: 'افغانی (AFN)',
-  USD: 'دلار (USD)',
-  IRT: 'تومان (IRT)',
-  USDT: 'تتر (USDT)',
-};
+const DRAFT_KEY = 'sarraaf_recharge_draft';
 
-const DRAFT_KEY = 'recharge_draft';
-
-export default function CustomerRecharge() {
-  const navigate = useNavigate();
+export default function SarraafRecharge() {
   const { user } = useAuth();
   const [tab, setTab] = useState('mobile_recharge');
   const [operators, setOperators] = useState([]);
@@ -37,16 +27,12 @@ export default function CustomerRecharge() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Mobile recharge form
   const [operator, setOperator] = useState('');
   const [mobile, setMobile] = useState('');
-  const [rechargeAmount, setRechargeAmount] = useState(0);
+  const [rechargeAmount, setRechargeAmount] = useState('');
   const [description, setDescription] = useState('');
-
-  // Internet package selection
   const [selectedPackage, setSelectedPackage] = useState(null);
 
-  // Shared
   const [walletCurrency, setWalletCurrency] = useState('AFN');
   const [errors, setErrors] = useState({});
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -68,7 +54,6 @@ export default function CustomerRecharge() {
       setAmounts(amts);
       setPackages(pkgs);
       setWallets(wals);
-      // Load draft
       try {
         const raw = localStorage.getItem(DRAFT_KEY);
         if (raw) {
@@ -80,27 +65,18 @@ export default function CustomerRecharge() {
           if (draft.description) setDescription(draft.description);
           if (draft.walletCurrency) setWalletCurrency(draft.walletCurrency);
         }
-      } catch {
-        // ignore
-      }
-    } catch (e) {
+      } catch { /* ignore */ }
+    } catch {
       setError(true);
     }
     setLoading(false);
-  }, []);
+  }, [user]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Save draft to localStorage (offline-friendly)
   useEffect(() => {
     const draft = { tab, operator, mobile, rechargeAmount, description, walletCurrency };
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-    } catch {
-      // ignore
-    }
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch { /* ignore */ }
   }, [tab, operator, mobile, rechargeAmount, description, walletCurrency]);
 
   const selectedWallet = wallets.find((w) => w.currency === walletCurrency);
@@ -129,18 +105,15 @@ export default function CustomerRecharge() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleOpenConfirm = () => {
-    if (!validate()) return;
-    setConfirmOpen(true);
-  };
+  const handleOpenConfirm = () => { if (!validate()) return; setConfirmOpen(true); };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const op = operators.find((o) => o.code === operator);
       const payload = {
-        user_id: user?.id || 'demo-customer',
-        user_name: user?.full_name || 'مشتری',
+        user_id: user?.id || 'demo-sarraaf',
+        user_name: user?.full_name || 'صراف',
         service_type: tab,
         operator: operator,
         operator_name: op?.name || operator,
@@ -152,25 +125,13 @@ export default function CustomerRecharge() {
         wallet_currency: walletCurrency,
         description,
       };
-      const { submitRequest } = await import('@/lib/rechargeMockData');
       const result = await submitRequest(payload);
       setSuccessRequest(result);
       setSuccessOpen(true);
       setConfirmOpen(false);
-      // Clear draft
       localStorage.removeItem(DRAFT_KEY);
-      // Reset form
-      setOperator('');
-      setMobile('');
-      setRechargeAmount(0);
-      setDescription('');
-      setSelectedPackage(null);
-    } catch (e) {
-      const msg = e?.message === 'insufficient_balance' ? 'موجودی کافی نیست'
-        : e?.message === 'wallet_not_found' ? 'کیف پول یافت نشد'
-        : 'خطا در ثبت درخواست';
-      setErrors({ submit: msg });
-    }
+      setOperator(''); setMobile(''); setRechargeAmount(''); setDescription(''); setSelectedPackage(null);
+    } catch { /* ignore */ }
     setSubmitting(false);
   };
 
@@ -182,7 +143,6 @@ export default function CustomerRecharge() {
           <Skeleton className="flex-1 h-10 rounded-lg" />
           <Skeleton className="flex-1 h-10 rounded-lg" />
         </div>
-        <Skeleton className="h-12 w-full rounded-lg" />
         <Skeleton className="h-12 w-full rounded-lg" />
         <Skeleton className="h-12 w-full rounded-lg" />
         <div className="grid grid-cols-2 gap-2">
@@ -222,17 +182,9 @@ export default function CustomerRecharge() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <h1 className="text-lg font-bold text-foreground">شارژ و اینترنت</h1>
-          <p className="text-xs text-muted-foreground">شارژ موبایل و بسته اینترنت</p>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/customer')}>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </div>
+      <div className="min-w-0">
+        <h1 className="text-lg font-bold text-foreground">شارژ و اینترنت</h1>
+        <p className="text-xs text-muted-foreground">شارژ موبایل و بسته اینترنت</p>
       </div>
 
       {/* Tabs */}
@@ -291,13 +243,19 @@ export default function CustomerRecharge() {
 
           <div>
             <Label className="text-xs">مبلغ شارژ (افغانی)</Label>
-            <AmountInput value={rechargeAmount} onChange={(v) => { setRechargeAmount(v); setErrors({}); }} placeholder="مبلغ را وارد کنید" />
+            <Input
+              type="number"
+              placeholder="مبلغ را وارد کنید"
+              value={rechargeAmount}
+              onChange={(e) => { setRechargeAmount(e.target.value); setErrors({}); }}
+              className="text-sm mt-1"
+            />
             {errors.rechargeAmount && <p className="text-[10px] text-destructive mt-1">{errors.rechargeAmount}</p>}
             <div className="flex flex-wrap gap-1.5 mt-2">
               {amounts.map((amt) => (
                 <button
                   key={amt}
-                  onClick={() => { setRechargeAmount(amt); setErrors({}); }}
+                  onClick={() => { setRechargeAmount(String(amt)); setErrors({}); }}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition-all ${parseFloat(rechargeAmount) === amt ? 'border-primary bg-primary/5 text-primary' : 'border-border text-muted-foreground'}`}
                 >
                   {amt.toLocaleString('fa-IR')}
@@ -345,7 +303,7 @@ export default function CustomerRecharge() {
       {/* Wallet Selection */}
       <div>
         <Label className="text-xs">کیف پول پرداخت</Label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+        <div className="grid grid-cols-2 gap-2 mt-1">
           {wallets.map((w) => (
             <button
               key={w.currency}
@@ -398,13 +356,6 @@ export default function CustomerRecharge() {
         </CardContent>
       </Card>
 
-      {/* Link to Orders */}
-      <Button variant="outline" className="w-full" onClick={() => navigate('/customer/orders')}>
-        <Package className="w-4 h-4 ml-2" />
-        سفارش‌های من
-      </Button>
-
-      {/* Confirm Dialog */}
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -413,15 +364,11 @@ export default function CustomerRecharge() {
         submitting={submitting}
       />
 
-      {/* Success Sheet */}
       <SuccessSheet
         open={successOpen}
         onOpenChange={setSuccessOpen}
         request={successRequest}
-        onGoToOrders={() => {
-          setSuccessOpen(false);
-          navigate('/customer/orders');
-        }}
+        onGoToOrders={() => { setSuccessOpen(false); }}
       />
     </div>
   );
