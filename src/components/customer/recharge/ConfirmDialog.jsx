@@ -6,6 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit3, Send, Database } from 'lucide-react';
 
+const SERVICE_LABELS = {
+  mobile_recharge: 'شارژ موبایل',
+  internet: 'بسته اینترنت',
+};
+
 const WALLET_LABELS = {
   AFN: 'افغانی (AFN)',
   USD: 'دلار (USD)',
@@ -14,7 +19,11 @@ const WALLET_LABELS = {
 };
 
 export default function ConfirmDialog({
-  open, onOpenChange, data, onConfirm, submitting,
+  open,
+  onOpenChange,
+  data,
+  onConfirm,
+  submitting,
 }) {
   if (!data) return null;
 
@@ -30,29 +39,26 @@ export default function ConfirmDialog({
           <Card className="shadow-sm">
             <CardContent className="p-3 space-y-2.5">
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">نام بازی/خدمت:</span>
-                <span className="font-medium text-foreground">{data.service_name}</span>
+                <span className="text-muted-foreground">نوع سرویس:</span>
+                <span className="font-medium text-foreground">{SERVICE_LABELS[data.service_type]}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">نوع محصول:</span>
-                <span className="font-medium text-foreground">{data.product_type}</span>
+                <span className="text-muted-foreground">اپراتور:</span>
+                <span className="font-medium text-foreground">{data.operator_name}</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">بسته/مقدار:</span>
-                <span className="font-medium text-foreground">{data.package_name}</span>
-              </div>
-              {data.account_info && Object.keys(data.account_info).length > 0 && (
-                <div className="pt-2 border-t border-border">
-                  <p className="text-[10px] text-muted-foreground mb-1">اطلاعات حساب بازی:</p>
-                  {Object.entries(data.account_info).map(([key, val]) => (
-                    <div key={key} className="flex justify-between text-xs mb-1">
-                      <span className="text-muted-foreground">{key}:</span>
-                      <span className="text-foreground text-[10px]" dir="ltr">{val}</span>
-                    </div>
-                  ))}
+              {data.mobile && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">شماره موبایل:</span>
+                  <span className="font-medium text-foreground ltr-text" dir="ltr">{data.mobile}</span>
                 </div>
               )}
-              <div className="flex justify-between text-xs pt-2 border-t border-border">
+              {data.package_name && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">نام بسته:</span>
+                  <span className="font-medium text-foreground">{data.package_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">کیف پول پرداخت:</span>
                 <span className="font-medium text-foreground">{WALLET_LABELS[data.wallet_currency] || data.wallet_currency}</span>
               </div>
@@ -62,9 +68,7 @@ export default function ConfirmDialog({
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">تاریخ و ساعت:</span>
-                <span className="text-foreground text-[10px]">
-                  {new Date().toLocaleDateString('fa-IR')} • {new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                <span className="text-foreground text-[10px]">{new Date().toLocaleDateString('fa-IR')} • {new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               {data.description && (
                 <div className="pt-2 border-t border-border">
@@ -81,12 +85,28 @@ export default function ConfirmDialog({
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => onOpenChange(false)}
+              disabled={submitting}
+            >
               <Edit3 className="w-4 h-4 ml-1" />
               ویرایش
             </Button>
-            <Button className="flex-1" onClick={onConfirm} disabled={submitting}>
-              {submitting ? 'در حال ارسال...' : (<><Send className="w-4 h-4 ml-1" />تأیید و ارسال درخواست</>)}
+            <Button
+              className="flex-1"
+              onClick={onConfirm}
+              disabled={submitting}
+            >
+              {submitting ? (
+                'در حال ارسال...'
+              ) : (
+                <>
+                  <Send className="w-4 h-4 ml-1" />
+                  تأیید و ارسال درخواست
+                </>
+              )}
             </Button>
           </div>
         </div>

@@ -16,6 +16,11 @@ const STATUS_LABELS = {
   cancelled: { label: 'لغو شده', color: 'bg-muted text-muted-foreground' },
 };
 
+const SERVICE_LABELS = {
+  mobile_recharge: 'شارژ موبایل',
+  internet: 'بسته اینترنت',
+};
+
 export default function SuccessSheet({ open, onOpenChange, request, onGoToOrders }) {
   if (!request) return null;
   const st = STATUS_LABELS[request.status] || STATUS_LABELS.new;
@@ -29,6 +34,7 @@ export default function SuccessSheet({ open, onOpenChange, request, onGoToOrders
         </SheetHeader>
 
         <div className="space-y-4 mt-4">
+          {/* Success Icon */}
           <Card className="shadow-sm border-success/30">
             <CardContent className="p-6 text-center">
               <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto mb-3">
@@ -43,6 +49,7 @@ export default function SuccessSheet({ open, onOpenChange, request, onGoToOrders
             </CardContent>
           </Card>
 
+          {/* Request Details */}
           <Card className="shadow-sm">
             <CardContent className="p-3 space-y-2">
               <div className="flex justify-between text-xs">
@@ -50,13 +57,25 @@ export default function SuccessSheet({ open, onOpenChange, request, onGoToOrders
                 <span className="font-mono text-primary font-bold text-[10px]">{request.request_number}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">بازی/خدمت:</span>
-                <span className="text-foreground">{request.service_name}</span>
+                <span className="text-muted-foreground">نوع سرویس:</span>
+                <span className="text-foreground">{SERVICE_LABELS[request.service_type]}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">بسته:</span>
-                <span className="text-foreground">{request.package_name}</span>
+                <span className="text-muted-foreground">اپراتور:</span>
+                <span className="text-foreground">{request.operator_name}</span>
               </div>
+              {request.mobile && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">شماره موبایل:</span>
+                  <span className="text-foreground" dir="ltr">{request.mobile}</span>
+                </div>
+              )}
+              {request.package_name && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">بسته:</span>
+                  <span className="text-foreground">{request.package_name}</span>
+                </div>
+              )}
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">مبلغ:</span>
                 <span className="font-bold text-foreground">{(request.amount || 0).toLocaleString('fa-IR')} {request.wallet_currency}</span>
