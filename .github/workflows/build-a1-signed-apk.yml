@@ -98,20 +98,8 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Prepare launcher icon
-        run: |
-          test -s icon.png
-          sudo apt-get update -qq
-          sudo apt-get install -y imagemagick
-          for spec in "48 mipmap-mdpi" "72 mipmap-hdpi" "96 mipmap-xhdpi" "144 mipmap-xxhdpi" "192 mipmap-xxxhdpi"; do
-            set -- $spec
-            mkdir -p "android/app/src/main/res/$2"
-            convert icon.png -resize "${1}x${1}" "android/app/src/main/res/$2/ic_launcher.png"
-          done
-          mkdir -p android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/drawable android/app/src/main/res/values
-          convert icon.png -resize 432x432 android/app/src/main/res/drawable/ic_launcher_foreground.png
-          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#FFFFFF</color></resources>' > android/app/src/main/res/values/icon_colors.xml
-          echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background" /><foreground android:drawable="@drawable/ic_launcher_foreground" /></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+      - name: Keep Capacitor default launcher resources for this review build
+        run: test -d android/app/src/main/res
 
       - name: Build signed release APK
         run: cd android && ./gradlew assembleRelease --stacktrace
