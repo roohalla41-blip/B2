@@ -231,7 +231,7 @@ function App() {
           <LanguageProvider>
             <QueryClientProvider client={queryClientInstance}>
               <UpgradeProvider>
-                <Router>
+                <Router basename={(window.location.pathname === '/B2' || window.location.pathname.startsWith('/B2/')) ? '/B2' : undefined}>
                   <ScrollToTop />
                   <ErrorBoundary>
                     <AppGate>
