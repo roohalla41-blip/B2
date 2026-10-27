@@ -1,0 +1,130 @@
+name: Build signed APK from copied A1 source
+
+on:
+  push:
+    branches:
+      - backup/a1-copy-review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-signed-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout B2 review branch
+        uses: actions/checkout@v4
+        with:
+          ref: backup/a1-copy-review
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install web dependencies and build A1
+        run: |
+          npm install
+          npm run build
+
+      - name: Install Capacitor Android tooling
+        run: npm install --no-save @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+
+      - name: Configure Capacitor for the existing B2 app identity
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.base44.apk",
+            "appName": "حساب صراف",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+
+      - name: Prepare the existing APK signing key
+        run: |
+          test -n "$KEYSTORE_BASE64" || (echo "KEYSTORE_BASE64 secret is missing." && exit 1)
+          printf '%s' "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > android/release.keystore
+          test -s android/release.keystore || (echo "Signing keystore could not be decoded." && exit 1)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Configure release signing without changing the app ID
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/build.gradle")
+          s = p.read_text()
+          s, n = re.subn(r'applicationId\s+["\'][^"\']+["\']', 'applicationId "com.base44.apk"', s, count=1)
+          if n != 1:
+              raise SystemExit("Could not locate applicationId in generated Android Gradle file.")
+          s = re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.0.1"', s, count=1)
+          if 'signingConfigs {' not in s:
+              block = '''    signingConfigs {
+                  release {
+                      storeFile file("${rootProject.projectDir}/release.keystore")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEY_PASSWORD")
+                  }
+              }
+
+          '''
+              if '    buildTypes {' not in s:
+                  raise SystemExit("Could not locate buildTypes in generated Android Gradle file.")
+              s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
+          if 'signingConfig signingConfigs.release' not in s:
+              old = '    buildTypes {\n        release {'
+              new = '    buildTypes {\n        release {\n            signingConfig signingConfigs.release'
+              if old not in s:
+                  raise SystemExit("Could not locate release build type.")
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Prepare launcher icon
+        run: |
+          test -s icon.png
+          sudo apt-get update -qq
+          sudo apt-get install -y imagemagick
+          for spec in "48 mipmap-mdpi" "72 mipmap-hdpi" "96 mipmap-xhdpi" "144 mipmap-xxhdpi" "192 mipmap-xxxhdpi"; do
+            set -- $spec
+            mkdir -p "android/app/src/main/res/$2"
+            convert icon.png -resize "${1}x${1}" "android/app/src/main/res/$2/ic_launcher.png"
+          done
+          mkdir -p android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/drawable android/app/src/main/res/values
+          convert icon.png -resize 432x432 android/app/src/main/res/drawable/ic_launcher_foreground.png
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="ic_launcher_background">#FFFFFF</color></resources>' > android/app/src/main/res/values/icon_colors.xml
+          echo '<?xml version="1.0" encoding="utf-8"?><adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@color/ic_launcher_background" /><foreground android:drawable="@drawable/ic_launcher_foreground" /></adaptive-icon>' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+
+      - name: Build signed release APK
+        run: cd android && ./gradlew assembleRelease --stacktrace
+
+      - name: Rename APK
+        run: |
+          APK_FILE=$(find android/app/build/outputs/apk/release -type f -name "*.apk" | head -n 1)
+          test -n "$APK_FILE" || (echo "Release APK was not produced." && exit 1)
+          cp "$APK_FILE" "B2-Hesab-Sarraf-A1-1.0.1.apk"
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: B2-Hesab-Sarraf-A1-Signed-APK
+          path: B2-Hesab-Sarraf-A1-1.0.1.apk
+          if-no-files-found: error
