@@ -1,2 +1,5 @@
-# base44-apk-builder
-Clean Android APK builder for a Base44 web application using Gradle and GitHub Actions.
+# پروژه B2 — حساب صراف
+
+این مخزن برای نگهداری ساختار پروژه B2 و آماده‌سازی نسخه پشتیبان حساب صراف استفاده می‌شود.
+
+گردش‌کار ساخت APK در GitHub Actions قرار دارد. تنظیمات و اسرار امضای APK باید حفظ شوند.
