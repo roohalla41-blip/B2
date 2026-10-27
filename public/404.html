@@ -9,8 +9,12 @@
   <body>
     <p>در حال بازگشت به حساب صراف…</p>
     <script>
-      var requestedPath = window.location.pathname + window.location.search + window.location.hash;
-      window.location.replace('/B2/?__spa_path=' + encodeURIComponent(requestedPath));
+      var path = window.location.pathname;
+      var isProjectPages = window.location.hostname.endsWith('github.io') &&
+        (path === '/B2' || path.indexOf('/B2/') === 0);
+      var base = isProjectPages ? '/B2/' : '/';
+      var requestedPath = path + window.location.search + window.location.hash;
+      window.location.replace(base + '?__spa_path=' + encodeURIComponent(requestedPath));
     </script>
   </body>
 </html>
