@@ -7,8 +7,6 @@
     <meta name="description" content="حساب صراف" />
     <title>حساب صراف</title>
     <script>
-      // GitHub Pages serves unknown client-side routes through 404.html.
-      // Restore the original React Router path before loading the app.
       (function () {
         try {
           var params = new URLSearchParams(window.location.search);
@@ -23,7 +21,7 @@
         }
       })();
     </script>
-    <script src="/runtime-config.js"></script>
+    <script src="%BASE_URL%runtime-config.js"></script>
   </head>
   <body>
     <div id="root"></div>
@@ -34,6 +32,6 @@
         <div style="font-size:13px;color:#c9a24b;margin-top:12px">اگر این پیام باقی ماند، اجرای برنامه شروع نشده است.</div>
       </div>
     </div>
-    <script type="module" src="./src/main.jsx"></script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
