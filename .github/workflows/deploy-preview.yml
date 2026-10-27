@@ -1,0 +1,34 @@
+name: Verify public preview build (no publish)
+
+on:
+  push:
+    branches:
+      - release/restore-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-preview-build
+  cancel-in-progress: true
+
+jobs:
+  verify-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/restore-build
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify website build
+        run: npm run build
