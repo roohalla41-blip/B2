@@ -116,7 +116,7 @@ jobs:
                               break
                   if rel_close is None:
                       raise SystemExit("Could not parse existing release signing block.")
-                  s = s[:rel_open] + "{\n              " + release_block + "\n          " + s[rel_close + 1:]
+                  s = s[:rel_open] + release_block + s[rel_close + 1:]
               else:
                   s = s[:close_brace] + "\n          " + release_block + "\n      " + s[close_brace:]
           else:
