@@ -45,7 +45,7 @@ jobs:
 
       - name: Install web dependencies and build A1 app
         run: |
-          npm ci
+          npm install
           npm run build
 
       - name: Upload built web app for review
