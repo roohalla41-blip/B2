@@ -72,20 +72,20 @@ jobs:
           p = Path("android/app/build.gradle")
           s = p.read_text()
 
-          s, n = re.subn(r'applicationId\\s+["\\'][^"\\']+["\\']', 'applicationId "com.base44.apk"', s, count=1)
+          s, n = re.subn(r'applicationId\s+["\'][^"\']+["\']', 'applicationId "com.base44.apk"', s, count=1)
           if n != 1:
               raise SystemExit("Could not locate applicationId in generated Android Gradle file.")
-          s = re.sub(r'versionName\\s+["\\'][^"\\']+["\\']', 'versionName "1.0.1"', s, count=1)
+          s = re.sub(r'versionName\s+["\'][^"\']+["\']', 'versionName "1.0.1"', s, count=1)
 
           release_block = """release {
-                  storeFile file("\\${rootProject.projectDir}/release.keystore")
+                  storeFile file("${rootProject.projectDir}/release.keystore")
                   storePassword System.getenv("KEYSTORE_PASSWORD")
                   keyAlias System.getenv("KEY_ALIAS")
                   keyPassword System.getenv("KEY_PASSWORD")
               }"""
 
           # Find signingConfigs and its matching closing brace, respecting nested braces.
-          match = re.search(r'\\bsigningConfigs\\s*\\{', s)
+          match = re.search(r'\bsigningConfigs\s*\{', s)
           if match:
               open_brace = s.find("{", match.start())
               depth = 0
@@ -101,7 +101,7 @@ jobs:
               if close_brace is None:
                   raise SystemExit("Could not parse signingConfigs block.")
               body = s[open_brace + 1:close_brace]
-              existing = re.search(r'\\brelease\\s*\\{', body)
+              existing = re.search(r'\brelease\s*\{', body)
               if existing:
                   rel_open = open_brace + 1 + body.find("{", existing.start())
                   depth = 0
@@ -116,22 +116,22 @@ jobs:
                               break
                   if rel_close is None:
                       raise SystemExit("Could not parse existing release signing block.")
-                  s = s[:rel_open] + "{\\n              " + release_block + "\\n          " + s[rel_close + 1:]
+                  s = s[:rel_open] + "{\n              " + release_block + "\n          " + s[rel_close + 1:]
               else:
-                  s = s[:close_brace] + "\\n          " + release_block + "\\n      " + s[close_brace:]
+                  s = s[:close_brace] + "\n          " + release_block + "\n      " + s[close_brace:]
           else:
-              build_types = re.search(r'(?m)^\\s*buildTypes\\s*\\{', s)
+              build_types = re.search(r'(?m)^\s*buildTypes\s*\{', s)
               if not build_types:
                   raise SystemExit("Could not locate buildTypes block.")
-              indent = re.match(r'\\s*', build_types.group(0)).group(0)
-              block = indent + "signingConfigs {\\n          " + release_block + "\\n      }\\n\\n"
+              indent = re.match(r'\s*', build_types.group(0)).group(0)
+              block = indent + "signingConfigs {\n          " + release_block + "\n      }\n\n"
               s = s[:build_types.start()] + block + s[build_types.start():]
 
           # Ensure release build type explicitly uses the release signing config.
-          bt = re.search(r'(?m)^\\s*buildTypes\\s*\\{', s)
+          bt = re.search(r'(?m)^\s*buildTypes\s*\{', s)
           if not bt:
               raise SystemExit("Could not locate buildTypes block.")
-          rel = re.search(r'(?m)^\\s*release\\s*\\{', s[bt.end():])
+          rel = re.search(r'(?m)^\s*release\s*\{', s[bt.end():])
           if not rel:
               raise SystemExit("Could not locate release build type.")
           rel_start = bt.end() + rel.start()
@@ -149,8 +149,8 @@ jobs:
           if rel_close is None:
               raise SystemExit("Could not parse release build type.")
           release_body = s[rel_open + 1:rel_close]
-          release_body = re.sub(r'(?m)^\\s*signingConfig\\s+signingConfigs\\.release\\s*\\n?', '', release_body)
-          release_body = "\\n            signingConfig signingConfigs.release" + release_body
+          release_body = re.sub(r'(?m)^\s*signingConfig\s+signingConfigs\.release\s*\n?', '', release_body)
+          release_body = "\n            signingConfig signingConfigs.release" + release_body
           s = s[:rel_open + 1] + release_body + s[rel_close:]
 
           p.write_text(s)
