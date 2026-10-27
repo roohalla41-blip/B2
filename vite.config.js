@@ -12,6 +12,6 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
-  // GitHub Pages project site is served from /B2/.
-  base: '/B2/',
+  // Relative asset URLs work on both the GitHub Pages /B2/ path and a root custom domain.
+  base: './',
 });
