@@ -9,10 +9,8 @@
   <body>
     <p>در حال بازگشت به حساب صراف…</p>
     <script>
-      // GitHub Pages does not natively serve React Router history paths.
-      // Send the requested path back to index.html for client-side routing.
       var requestedPath = window.location.pathname + window.location.search + window.location.hash;
-      window.location.replace('/?__spa_path=' + encodeURIComponent(requestedPath));
+      window.location.replace('/B2/?__spa_path=' + encodeURIComponent(requestedPath));
     </script>
   </body>
 </html>
