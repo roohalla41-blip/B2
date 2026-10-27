@@ -1,0 +1,54 @@
+name: Build Android APK
+on:
+  push:
+    branches: [release/restore-build]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main-project release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: release/restore-build
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install web dependencies
+        run: npm install
+      - name: Build web app
+        run: npm run build
+      - name: Install Capacitor Android tooling
+        run: npm install --no-save @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+      - name: Configure Capacitor
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.hesabsarraf.app",
+            "appName": "حساب صراف",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          EOF
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Sync built app into Android
+        run: npx cap sync android
+      - name: Build installable debug APK
+        run: cd android && ./gradlew assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hesab-sarraf-android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
