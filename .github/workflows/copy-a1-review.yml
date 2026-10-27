@@ -27,7 +27,7 @@ jobs:
 
       - name: Copy A1 files while preserving B2 APK signing files
         run: |
-          rsync -a --exclude='.git' --exclude='README.md' a1-source/ ./
+          rsync -a --exclude='.git' --exclude='README.md' --exclude='.github/workflows/' a1-source/ ./
           rm -rf a1-source
           git status --short
 
