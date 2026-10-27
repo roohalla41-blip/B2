@@ -1,0 +1,70 @@
+name: Deploy production web app
+# The app source is release/restore-build; main stores deployment configuration.
+# Redeploy production when the application source receives a targeted fix.
+# Root-relative Vite assets are required for nested custom-domain routes.
+# Redeploy after the Supabase auth-loading timeout fix on release/restore-build.
+# Trigger a fresh production deployment after isolating the preview workflow.
+# Redeploy after the public homepage AI assistant was merged into release/restore-build.
+# Redeploy after fixing runtime-config loading on nested client-side routes.
+
+on:
+  push:
+    branches:
+      - main
+      - release/restore-build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: production-pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the production app source
+        uses: actions/checkout@v4
+        with:
+          ref: release/restore-build
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the website
+        run: npm run build
+
+      - name: Check out the configured custom domain
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site-config
+
+      - name: Preserve custom domain configuration
+        run: |
+          test -s site-config/CNAME
+          cp site-config/CNAME dist/CNAME
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist/
+
+      - name: Publish production website
+        id: deployment
+        uses: actions/deploy-pages@v4
