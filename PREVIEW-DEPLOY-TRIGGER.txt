@@ -1,0 +1,2 @@
+Harmless marker to trigger the existing public preview deployment workflow.
+Redeploy requested on 2026-10-26 after reported HTTP 404. No application source code or database was changed.

@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
 import { isLocalTestMode } from '@/lib/localTestMode';
 import { applyCreatorRole } from '@/lib/creatorAuth';
 import { directGetMe } from '@/lib/directAuth';
@@ -7,11 +6,16 @@ import { setAppTokenHeader } from '@/lib/supabaseDirectAuth';
 import { callSupabase } from '@/lib/supabaseApi';
 import { clearAllCache, setCacheTenant } from '@/lib/offlineQueue';
 
-// NOTE: base44.auth is a conditional dependency — it only works inside
-// the Base44 platform. In standalone mode the import resolves but the
-// calls throw, which is caught by the try/catch below and the app falls
-// through to the HMAC token path. This keeps the app working in both
-// environments without code changes.
+// Standalone authentication uses Supabase-backed custom tokens only.
+
+const AUTH_VERIFY_TIMEOUT = 10000;
+
+function waitForAuthVerification(promise) {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((resolve) => setTimeout(() => resolve(null), AUTH_VERIFY_TIMEOUT)),
+  ]);
+}
 
 const AuthContext = createContext();
 
@@ -29,43 +33,6 @@ export const AuthProvider = ({ children }) => {
 
   const checkAppState = async () => {
     try {
-      // ── Base44 platform session (conditional — no-op in standalone) ──
-      // Skipped when a custom HMAC token exists (e.g. after Google login
-      // callback stores an HMAC token — we don't want the Base44 platform
-      // session to override the Supabase user record).
-      const hasCustomToken = typeof localStorage !== 'undefined' && !!localStorage.getItem('auth_token');
-      if (!hasCustomToken) {
-        try {
-          const isBase44Authed = await base44.auth.isAuthenticated();
-          if (isBase44Authed) {
-            const me = await base44.auth.me();
-            if (me) {
-              const base44User = {
-                id: String(me.id || ''),
-                full_name: me.full_name || me.email || '',
-                name: me.full_name || me.email || '',
-                email: me.email || '',
-                role: me.role === 'admin' ? 'creator' : 'sarraaf',
-                account_type: me.role === 'admin' ? 'admin' : 'sarraaf',
-                status: 'active',
-              };
-              const finalUser = applyCreatorRole(base44User);
-              if (finalUser.role !== 'creator') {
-                localStorage.setItem('auth_user', JSON.stringify(finalUser));
-              }
-              setCacheTenant(finalUser);
-              setUser(finalUser);
-              setIsAuthenticated(true);
-              setIsLoadingAuth(false);
-              setAuthChecked(true);
-              return;
-            }
-          }
-        } catch {
-          // Base44 auth not available — fall through to custom auth (standalone mode)
-        }
-      }
-
       // ── Custom auth (HMAC token from supabase backend) ──
       if (typeof localStorage !== 'undefined') {
         const customToken = localStorage.getItem('auth_token');
@@ -75,7 +42,7 @@ export const AuthProvider = ({ children }) => {
         // اطلاعات کاربر را از بک‌اند دریافت می‌کنیم — بدون ذخیره در localStorage.
         if (customToken && !customUser) {
           try {
-            const me = await directGetMe(customToken);
+            const me = await waitForAuthVerification(directGetMe(customToken));
             if (me) {
               const finalUser = applyCreatorRole(me);
               // If token was reissued with exchange_code, update it
@@ -169,12 +136,6 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setAuthChecked(true);
     } catch { /* ignore state errors */ }
-
-    // Clear Base44 platform session — without this, the platform session
-    // stays alive and the user gets re-authenticated on next page load.
-    try {
-      await base44.auth.logout();
-    } catch { /* standalone mode — no platform session to clear */ }
 
     // Hard redirect LAST — guarantees navigation after state is cleared
     if (shouldRedirect) {

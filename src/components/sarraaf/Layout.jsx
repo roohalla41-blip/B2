@@ -307,6 +307,9 @@ export default function Layout() {
                   >
                     <Icon className="w-4 h-4 shrink-0" />
                     <span className="truncate">{item.label}</span>
+                    {item.featureStatus === 'updating' && (
+                      <span title={item.featureMessage || 'این بخش در حال به‌روزرسانی است'} className="mr-auto shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] text-amber-700">به‌روزرسانی</span>
+                    )}
                   </Link>
                 );
               })}

@@ -16,6 +16,8 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 function showFatalError(message) {
+  // Never let the boot overlay hide the fatal-error screen.
+  document.getElementById('boot-fallback')?.remove();
   const root = document.getElementById('root');
   if (root && root.children.length === 0) {
     root.innerHTML = `
@@ -36,3 +38,11 @@ setupSWUpdate();
 ReactDOM.createRoot(document.getElementById('root')).render(
   <App />
 )
+
+// Remove the static startup overlay once the browser has had a chance to mount React.
+// If React itself fails, showFatalError removes the overlay and displays the error screen.
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    document.getElementById('boot-fallback')?.remove();
+  });
+});

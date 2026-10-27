@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="description" content="حساب صراف" />
+    <title>حساب صراف</title>
+    <script>
+      // GitHub Pages serves unknown client-side routes through 404.html.
+      // Restore the original React Router path before loading the app.
+      (function () {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var spaPath = params.get('__spa_path');
+          if (!spaPath) return;
+          var target = new URL(spaPath, window.location.origin);
+          if (target.origin === window.location.origin) {
+            window.history.replaceState(null, '', target.pathname + target.search + target.hash);
+          }
+        } catch (error) {
+          console.warn('Could not restore application route.');
+        }
+      })();
+    </script>
+    <script src="/runtime-config.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="boot-fallback" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;background:#101318;color:#f4edd8;font-family:Tahoma,Arial,sans-serif;text-align:center;line-height:2">
+      <div>
+        <div style="font-size:24px;font-weight:700;margin-bottom:12px">حساب صراف</div>
+        <div>در حال راه‌اندازی برنامه...</div>
+        <div style="font-size:13px;color:#c9a24b;margin-top:12px">اگر این پیام باقی ماند، اجرای برنامه شروع نشده است.</div>
+      </div>
+    </div>
+    <script type="module" src="./src/main.jsx"></script>
+  </body>
+</html>

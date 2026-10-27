@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, ArrowLeft, Store, UserCircle } from 'lucide-react';
+import { Shield, ArrowLeft, Store, UserCircle, Bot } from 'lucide-react';
 import ContactInfo from '@/components/sarraaf/ContactInfo';
 import SarraafLogo from '@/components/SarraafLogo';
 import PwaInstallPrompt from '@/components/PwaInstallPrompt';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { useLanguage } from '@/lib/i18n';
+import Assistant from '@/pages/Assistant';
 
 const goldStyles = `
   .pgm-btn-outline { color: #e8c875; }
@@ -146,7 +147,7 @@ const goldStyles = `
   .pgm-contact {
     width: 100%;
     margin-top: auto;
-    padding: 12px 0 10px;
+    padding: 5px 0 4px;
     border-top: 1px solid rgba(201,162,75,0.27);
     border-bottom: 1px solid rgba(201,162,75,0.15);
     box-sizing: border-box;
@@ -172,6 +173,7 @@ const goldStyles = `
 
 export default function Welcome() {
   const { t, dir } = useLanguage();
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   return (
     <div
@@ -216,6 +218,11 @@ export default function Welcome() {
         </div>
 
         <div className="pgm-actions">
+          <button type="button" onClick={() => setAssistantOpen(true)} aria-label="دستیار هوشمند از من بپرس" className="group flex min-h-[58px] w-full items-center gap-3 rounded-xl border border-amber-300/60 bg-gradient-to-l from-[#302719] to-[#1a1d26] px-4 text-right shadow-[0_7px_22px_rgba(201,162,75,0.18)] transition hover:border-amber-200 hover:shadow-[0_8px_28px_rgba(201,162,75,0.28)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-200 to-amber-600 text-2xl" aria-hidden="true">🤖</span>
+            <span className="flex-1 text-sm font-extrabold text-amber-100">دستیار هوشمند، از من بپرس</span>
+            <ArrowLeft className="h-5 w-5 shrink-0 text-amber-200 transition-transform group-hover:-translate-x-1" aria-hidden="true" />
+          </button>
           <Link to="/login" className="pgm-btn pgm-btn-primary">
             <ArrowLeft className="w-[18px] h-[18px]" />
             {t('welcome.login')}
@@ -231,9 +238,10 @@ export default function Welcome() {
         </div>
       </div>
 
+      {/* Open the AI helper above the sign-in options; no page navigation */}
       {/* Contact Section */}
       <div className="pgm-contact w-full max-w-sm relative z-10 shrink-0">
-        <ContactInfo />
+        <ContactInfo compact />
       </div>
 
       {/* Footer */}
@@ -241,6 +249,14 @@ export default function Welcome() {
         <p>{t('welcome.copyright')}</p>
         <p className="pgm-version">v1.0.1</p>
       </div>
+
+      {assistantOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-label="دستیار هوشمند حساب صراف" className="h-[88dvh] w-full max-w-2xl overflow-hidden rounded-2xl border border-amber-300/40 bg-background text-foreground shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <Assistant embedded onClose={() => setAssistantOpen(false)} />
+          </div>
+        </div>
+      )}
 
       <PwaInstallPrompt showInstallPrompt={false} />
     </div>

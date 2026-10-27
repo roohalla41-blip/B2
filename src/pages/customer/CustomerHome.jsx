@@ -7,9 +7,9 @@ import { Wallet, Smartphone, Gamepad2, Send, Landmark, Package, MessageSquare, A
 
 const SECTIONS = [
   { path: '/customer/wallet', label: 'کیف پول من', desc: 'موجودی و تاریخچه تراکنش‌ها', icon: Wallet, color: 'from-blue-500 to-blue-600' },
-  { path: '/customer/recharge', label: 'شارژ و اینترنت', desc: 'شارژ سیم‌کارت و بسته اینترنت', icon: Smartphone, color: 'from-green-500 to-green-600' },
+  { path: '/customer/recharge', label: 'شارژ و اینترنت', desc: 'شارژ سیم‌کارت و بسته اینترنت', icon: Smartphone, color: 'from-green-500 to-green-600', updating: true },
   { path: '/customer/afghan5', label: 'افغان۵', desc: 'خرید بسته از افغان۵', icon: Globe, color: 'from-cyan-500 to-cyan-600' },
-  { path: '/customer/games', label: 'بازی‌ها', desc: 'UC پابجی، جم کلش و...', icon: Gamepad2, color: 'from-violet-500 to-violet-600' },
+  { path: '/customer/games', label: 'بازی‌ها', desc: 'UC پابجی، جم کلش و...', icon: Gamepad2, color: 'from-violet-500 to-violet-600', updating: true },
   { path: '/customer/transfer', label: 'ارسال پول / حواله', desc: 'ثبت درخواست ارسال پول', icon: Send, color: 'from-orange-500 to-orange-600' },
   { path: '/customer/account', label: 'حساب من با صراف', desc: 'طلب، بدهی و مانده حساب', icon: Landmark, color: 'from-cyan-500 to-cyan-600' },
   { path: '/customer/orders', label: 'سفارش‌ها و درخواست‌ها', desc: 'پیگیری سفارش‌ها', icon: Package, color: 'from-rose-500 to-rose-600' },
@@ -86,10 +86,11 @@ export default function CustomerHome() {
                 onClick={() => navigate(section.path)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-card-hover transition-all text-center group"
               >
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${section.color} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
+                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${section.color} ${section.updating ? 'opacity-60' : ''} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
                   <Icon className="w-6 h-6 text-white" strokeWidth={2.2} />
                 </div>
                 <span className="text-[11px] font-bold text-foreground leading-tight">{section.label}</span>
+                {section.updating && <span className="text-[9px] text-amber-600 text-center leading-tight">در حال به‌روزرسانی</span>}
               </button>
             );
           })}

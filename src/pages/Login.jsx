@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,7 +13,18 @@ import { directLogin, checkLegacyUser } from '@/lib/directAuth';
 import { login as localLogin } from '@/lib/localAuth';
 import { tryMigrateLocalUser } from '@/lib/legacyMigration';
 import LegacyUserNotice from '@/components/LegacyUserNotice';
+import ContactInfo from '@/components/sarraaf/ContactInfo';
 import { loginWithProvider, handleGoogleCallback } from '@/lib/googleAuth';
+
+const LOGIN_TIMEOUT = 12000;
+const MIGRATION_TIMEOUT = 8000;
+
+function waitForLoginResult(promise, timeoutMs, fallback) {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((resolve) => setTimeout(() => resolve(fallback), timeoutMs)),
+  ]);
+}
 
 const goldStyles = `
   @keyframes pgm-rise {
@@ -200,6 +211,7 @@ const goldStyles = `
 `;
 
 export default function Login() {
+  const navigate = useNavigate();
   const { isAuthenticated, user, isLoadingAuth } = useAuth();
   const [tab, setTab] = useState('sarraaf');
   const [identifier, setIdentifier] = useState('');
@@ -231,7 +243,7 @@ export default function Login() {
   useEffect(() => {
     if (!isLoadingAuth && isAuthenticated && user) {
       const home = HOME_BY_ROLE[user.role] || '/';
-      window.location.href = home;
+      navigate(home, { replace: true });
     }
   }, [isAuthenticated, user, isLoadingAuth]);
 
@@ -244,7 +256,16 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      let result = await directLogin(identifier, password);
+      let result = await waitForLoginResult(
+        directLogin(identifier, password),
+        LOGIN_TIMEOUT,
+        { success: false, error: 'login_timeout' }
+      );
+      if (result?.error === 'login_timeout') {
+        console.error('[auth-diagnostic]', { stage: 'legacy_login_rpc', code: 'timeout', at: new Date().toISOString() });
+        setError('سرویس ورود در ۱۲ ثانیه پاسخ نداد. اتصال اینترنت و سرویس Supabase را بررسی کنید؛ دوباره تلاش کنید.');
+        return;
+      }
 
       // ── اگر ورود Supabase ناموفق بود و کاربر یافت نشد (یا دیتابیس در دسترس نبود)،
       //    ورود محلی را امتحان کن — سپس مهاجرت بی‌صدا به Supabase ──
@@ -254,7 +275,14 @@ export default function Login() {
           // مهاجرت بی‌صدا کاربر محلی به Supabase
           let migrateResult = null;
           try {
-            migrateResult = await tryMigrateLocalUser(localResult.user, password);
+            migrateResult = await waitForLoginResult(
+              tryMigrateLocalUser(localResult.user, password),
+              MIGRATION_TIMEOUT,
+              { migrated: false, reason: 'timeout' }
+            );
+            if (migrateResult?.reason === 'timeout') {
+              console.warn('[auth-diagnostic]', { stage: 'local_user_migration', code: 'timeout', at: new Date().toISOString() });
+            }
           } catch { /* بی‌صدا — ورود مسدود نمی‌شود */ }
 
           if (migrateResult && migrateResult.migrated && migrateResult.token) {
@@ -284,7 +312,7 @@ export default function Login() {
               setLoading(false);
               return;
             }
-            window.location.href = HOME_BY_ROLE[userRole] || '/';
+            window.location.replace(HOME_BY_ROLE[userRole] || '/');
             return;
           }
 
@@ -313,7 +341,7 @@ export default function Login() {
             setLoading(false);
             return;
           }
-          window.location.href = HOME_BY_ROLE[userRole] || '/';
+          window.location.replace(HOME_BY_ROLE[userRole] || '/');
           return;
         }
       }
@@ -330,6 +358,15 @@ export default function Login() {
           wrong_password_or_user_not_found: 'رمز عبور اشتباه است یا حساب یافت نشد',
           profile_not_found: 'پروفایل کاربری یافت نشد. لطفاً فایل supabase-login-fix.sql را در Supabase اجرا کنید',
         };
+        if (result.error === 'rpc_error') {
+          const detail = String(result.message || '');
+          const missingLoginRpc = /PGRST202|42883|could not find the function|function .* does not exist|permission denied for function/i.test(detail);
+          console.error('[auth] Supabase legacy_login RPC failed:', detail);
+          setError(missingLoginRpc
+            ? 'تابع ورود در Supabase پیدا نشد یا مجوز اجرای آن موجود نیست. فایل public_supabase-app-token-auth.sql باید در SQL Editor اجرا شود.'
+            : 'سرویس ورود دیتابیس خطا داد. اتصال Supabase یا مجوز تابع ورود نیاز به بررسی دارد؛ تنظیمات حساب شما تغییر نکرده است.');
+          return;
+        }
         setError(msgs[result.error] || 'خطا در ورود');
         return;
       }
@@ -360,7 +397,7 @@ export default function Login() {
         setLoading(false);
         return;
       }
-      window.location.href = HOME_BY_ROLE[result.user.role] || '/';
+      window.location.replace(HOME_BY_ROLE[result.user.role] || '/');
     } catch (err) {
       setError(err.message || 'خطا در ورود');
     } finally {
@@ -407,11 +444,11 @@ export default function Login() {
     handleGoogleCallback().then((result) => {
       if (result?.linked && result?.user) {
         window.history.replaceState({}, '', '/login');
-        window.location.href = HOME_BY_ROLE[result.user.role] || '/';
+        window.location.replace(HOME_BY_ROLE[result.user.role] || '/');
       } else if (result?.error === 'user_not_found' && result.google_email) {
         const params = new URLSearchParams({ tab: 'google', email: result.google_email });
         if (result.google_name) params.set('name', result.google_name);
-        window.location.href = `/register?${params.toString()}`;
+        navigate(`/register?${params.toString()}`, { replace: true });
       } else {
         setGoogleLoading(false);
         const msgs = {
@@ -427,7 +464,7 @@ export default function Login() {
   return (
     <div
       dir="rtl"
-      className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center px-4 py-8"
+      className="min-h-screen relative overflow-x-hidden overflow-y-auto flex flex-col items-center justify-start px-4 py-8"
       style={{
         background: 'radial-gradient(ellipse at 50% 25%, #302719 0%, #191a1d 36%, #0f1115 75%)',
         color: '#f4edd8',
@@ -558,6 +595,11 @@ export default function Login() {
               </form>
             </TabsContent>
           </Tabs>
+        </div>
+
+        {/* راه‌های ارتباطی پیش از ورود */}
+        <div className="mt-5">
+          <ContactInfo />
         </div>
 
         {/* لینک‌ها */}

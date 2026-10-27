@@ -1,0 +1,180 @@
+════════════════════════════════════════════════════════════════════════════════
+  HESAB SARAAF — SUPABASE BACKUP MANIFEST v01
+  Generated: 2026-09-27T09:01:55.127Z
+════════════════════════════════════════════════════════════════════════════════
+
+━━━ BACKUP FILES ━━━
+
+  1. hesab-sarraf-supabase-schema-v01.sql
+  2. hesab-sarraf-supabase-data-v01.sql
+  3. SUPABASE-BACKUP-MANIFEST.txt
+
+━━━ WHAT WAS BACKED UP ━━━
+
+  ✓ Table schemas (columns, types) via PostgREST OpenAPI spec
+  ✓ Table data (INSERT statements, max 10,000 rows/table)
+  ✓ RLS policies (0) via pg_policies
+  ✓ Indexes (0) via pg_indexes
+  ✓ Views (5/9 accessible)
+  ✓ Storage buckets (0)
+  ✓ Auth users metadata (2 users, no passwords)
+
+━━━ WHAT WAS NOT BACKED UP ━━━
+
+  ✗ Foreign key constraints — PostgREST doesn't expose them
+  ✗ Triggers — pg_trigger not accessible
+  ✗ Functions/RPCs — pg_proc not accessible
+  ✗ Sequences — not accessible
+  ✗ Auth passwords — intentionally excluded
+  ✗ Auth tokens/sessions — intentionally excluded
+  ✗ Storage file contents — only bucket metadata
+  ✗ Full DDL (CREATE TABLE) — PostgREST doesn't expose DDL
+
+━━━ TABLE SUMMARY ━━━
+
+  Total tables: 65
+  Tables with data: 15
+  Total rows: 30
+
+  Table                                        Rows Status    
+  ──────────────────────────────────────────────────────────
+  users                                           2 OK
+  exchanges                                       2 OK
+  customers                                       4 OK
+  rates                                           0 OK
+  bank_accounts                                   1 OK
+  safes                                           2 OK
+  origins                                         0 OK
+  transfers                                       0 OK
+  documents                                       2 OK
+  ledger_entries                                  4 OK
+  conversions                                     0 OK
+  treasury_transactions                           0 OK
+  bank_transactions                               0 OK
+  journal_entries                                 0 OK
+  wallets                                         0 OK
+  wallet_transactions                             0 OK
+  wallet_topup_requests                           0 ERROR
+  wallet_withdrawal_requests                      0 ERROR
+  charge_orders                                   0 OK
+  online_products                                 0 OK
+  sellers                                         0 OK
+  packages                                        0 OK
+  pricing_plans                                   0 OK
+  app_settings                                    1 OK
+  feature_settings                                0 OK
+  rate_settings                                   0 ERROR
+  text_labels                                     0 ERROR
+  rules                                           0 OK
+  customer_notifications                          0 OK
+  customer_transfer_requests                      0 OK
+  customer_links                                  0 OK
+  user_notifications                              0 ERROR
+  user_permissions                                0 ERROR
+  user_feedback                                   1 OK
+  support_tickets                                 1 OK
+  support_messages                                1 OK
+  error_reports                                   2 OK
+  audit_logs                                      3 OK
+  backup_records                                  0 ERROR
+  referrals                                       0 ERROR
+  plan_quotas                                     0 ERROR
+  quota_change_logs                               0 ERROR
+  agency_links                                    0 ERROR
+  chat_groups                                     0 ERROR
+  chat_group_members                              0 ERROR
+  chat_messages                                   0 ERROR
+  message_reports                                 0 ERROR
+  bank_gateways                                   0 ERROR
+  payment_transactions                            0 ERROR
+  payment_records                                 0 ERROR
+  wallet_bans                                     0 ERROR
+  idempotency_keys                                2 OK
+  safe_test_2                                     0 OK
+  online_requests                                 0 OK
+  v_agent_balances                                0 ERROR
+  v_transactions                                  2 OK
+  v_treasury_balances                             0 ERROR
+  v_exchange_summary                              0 ERROR
+  test123                                         0 OK
+  v_customer_balances                             0 ERROR
+  v_profit_loss                                   0 ERROR
+  employees                                       0 OK
+  v_bank_balances                                 0 ERROR
+  v_currency_balances                             0 ERROR
+  v_wallet_balances                               0 ERROR
+
+━━━ VIEWS ━━━
+
+  v_treasury_balances                      NOT FOUND
+  v_bank_balances                          OK (8 cols)
+  v_customer_balances                      OK (8 cols)
+  v_wallet_balances                        NOT FOUND
+  v_agent_balances                         NOT FOUND
+  v_profit_loss                            NOT FOUND
+  v_currency_balances                      OK (4 cols)
+  v_exchange_summary                       OK (7 cols)
+  v_transactions                           OK (24 cols)
+
+━━━ RLS POLICIES (0) ━━━
+
+  Error: HTTP_404
+
+━━━ INDEXES (0) ━━━
+
+  Error: HTTP_404
+
+━━━ STORAGE (0 buckets) ━━━
+
+  Error: HTTP_404
+
+━━━ AUTH USERS (2) ━━━
+
+  Passwords excluded: YES
+  Tokens excluded: YES
+
+━━━ ERRORS (27) ━━━
+
+  wallet_topup_requests: HTTP_404
+  wallet_withdrawal_requests: HTTP_404
+  rate_settings: HTTP_404
+  text_labels: HTTP_404
+  user_notifications: HTTP_404
+  user_permissions: HTTP_404
+  backup_records: HTTP_404
+  referrals: HTTP_404
+  plan_quotas: HTTP_404
+  quota_change_logs: HTTP_404
+  agency_links: HTTP_404
+  chat_groups: HTTP_404
+  chat_group_members: HTTP_404
+  chat_messages: HTTP_404
+  message_reports: HTTP_404
+  bank_gateways: HTTP_404
+  payment_transactions: HTTP_404
+  payment_records: HTTP_404
+  wallet_bans: HTTP_404
+  v_agent_balances: HTTP_400
+  v_treasury_balances: HTTP_400
+  v_exchange_summary: HTTP_400
+  v_customer_balances: HTTP_400
+  v_profit_loss: HTTP_400
+  v_bank_balances: HTTP_400
+  v_currency_balances: HTTP_400
+  v_wallet_balances: HTTP_400
+
+━━━ RESTORE INFO ━━━
+
+  Schema SQL: Metadata (NOT executable CREATE TABLEs)
+  Data SQL: INSERT statements (tables must exist first)
+  Full restore requires Supabase Dashboard pg_dump
+  This is a READ-ONLY snapshot — no data was modified
+
+━━━ SECRETS REPORT ━━━
+
+  No secrets in any backup file.
+  'password' column excluded from data SQL.
+
+════════════════════════════════════════════════════════════════════════════════
+  END OF MANIFEST — READ-ONLY BACKUP
+════════════════════════════════════════════════════════════════════════════════

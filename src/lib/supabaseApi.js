@@ -233,7 +233,7 @@ export async function callSupabase(action, payload = {}) {
   // Handle keepalive directly
   if (action === 'keepalive') {
     try {
-      const { error } = await supabase.from('app_settings').select('key', { count: 'exact', head: true });
+      const { error } = await supabase.from('app_settings').select('setting_key', { count: 'exact', head: true });
       return { success: !error };
     } catch {
       return { success: false };
@@ -243,7 +243,7 @@ export async function callSupabase(action, payload = {}) {
   // Handle test connection
   if (action === 'test') {
     try {
-      const { error } = await supabase.from('app_settings').select('key').limit(1);
+      const { error } = await supabase.from('app_settings').select('setting_key').limit(1);
       return { success: !error, error: error?.message };
     } catch (e) {
       return { success: false, error: e.message };
@@ -271,8 +271,26 @@ export async function callSupabase(action, payload = {}) {
 }
 
 // ── Direct CRUD handler ──
+// Empty-filter mutations are blocked to prevent accidental mass changes.
+function hasExplicitFilter(filters) {
+  return !!filters &&
+    typeof filters === 'object' &&
+    !Array.isArray(filters) &&
+    Object.entries(filters).some(([key, value]) =>
+      typeof key === 'string' && key.trim() !== '' &&
+      value !== undefined && value !== null
+    );
+}
+
 async function handleCrudDirect({ table, operation, filters, data, sort, limit, fields }) {
   try {
+    if (operation === 'update' && !hasExplicitFilter(filters)) {
+      return { success: false, error: 'unsafe_unfiltered_update' };
+    }
+    if (operation === 'delete' && !hasExplicitFilter(filters)) {
+      return { success: false, error: 'unsafe_unfiltered_delete' };
+    }
+
     let query = supabase.from(table);
 
     if (operation === 'select' || !operation) {

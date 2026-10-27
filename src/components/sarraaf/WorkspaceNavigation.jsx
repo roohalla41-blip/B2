@@ -9,7 +9,7 @@ const GROUPS = [
   ['مالی و حسابداری', ['reports', 'profit_loss', 'debtors', 'journal', 'general_ledger', 'balance_sheet', 'reconciliation']],
   ['بازار و نرخ', ['currencies', 'sarraaf_market', 'convert']],
   ['امکانات کسب‌وکار', ['agents', 'agency_network', 'online_products', 'payment_gateway', 'sarraaf_chat', 'chat_groups']],
-  ['سیستم', ['settings', 'backup', 'support']],
+  ['سیستم', ['settings', 'backup', 'support', 'assistant']],
 ];
 
 export default function WorkspaceNavigation({ items }) {
@@ -45,6 +45,9 @@ export default function WorkspaceNavigation({ items }) {
                   >
                     <Icon className="w-4 h-4 shrink-0" strokeWidth={1.8} />
                     <span className="truncate">{item.label}</span>
+                    {item.featureStatus === 'updating' && (
+                      <span title={item.featureMessage || 'این بخش در حال به‌روزرسانی است'} className="mr-auto shrink-0 rounded bg-amber-400/10 px-1.5 py-0.5 text-[9px] text-amber-300">به‌روزرسانی</span>
+                    )}
                   </Link>
                 );
               })}

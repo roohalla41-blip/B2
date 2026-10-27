@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>در حال بازگشت به حساب صراف…</title>
+  </head>
+  <body>
+    <p>در حال بازگشت به حساب صراف…</p>
+    <script>
+      // GitHub Pages does not natively serve React Router history paths.
+      // Send the requested path back to index.html for client-side routing.
+      var requestedPath = window.location.pathname + window.location.search + window.location.hash;
+      window.location.replace('/?__spa_path=' + encodeURIComponent(requestedPath));
+    </script>
+  </body>
+</html>

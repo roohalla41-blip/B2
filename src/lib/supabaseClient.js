@@ -17,40 +17,15 @@ import { getSupabaseConfig } from './supabaseConfig';
 // HMAC session token from localStorage) so RLS policies can read it.
 function createAppFetch() {
   return async (url, options = {}) => {
-    let requestOptions = options;
     try {
       const token = localStorage.getItem('auth_token');
       if (token) {
         const headers = new Headers(options.headers || {});
         headers.set('x-app-token', token);
-        requestOptions = { ...options, headers };
+        options = { ...options, headers };
       }
     } catch { /* ignore */ }
-
-    // Prevent a stalled network request from leaving route/data loaders spinning forever.
-    const controller = new AbortController();
-    const callerSignal = requestOptions.signal;
-    let timedOut = false;
-    const abortFromCaller = () => controller.abort();
-    if (callerSignal?.aborted) controller.abort();
-    else callerSignal?.addEventListener?.('abort', abortFromCaller, { once: true });
-
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, 20000);
-
-    try {
-      return await fetch(url, { ...requestOptions, signal: controller.signal });
-    } catch (error) {
-      if (timedOut) {
-        throw new Error('درخواست Supabase پس از ۲۰ ثانیه پاسخ نداد؛ اتصال شبکه یا سرویس را بررسی کنید.');
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeoutId);
-      callerSignal?.removeEventListener?.('abort', abortFromCaller);
-    }
+    return fetch(url, options);
   };
 }
 
