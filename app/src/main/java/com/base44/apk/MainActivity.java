@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
 
     private static final String APP_URL =
-            "https://motherapp.base44.app";
+            "https://hisabsarraf.new.tg/";
 
     private static final String CHROME_UA =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) " +
@@ -186,7 +186,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isInternalHost(String host) {
-        return host.equals("motherapp.base44.app") ||
+        return host.equals("hisabsarraf.new.tg") ||
+                host.equals("motherapp.base44.app") ||
                 host.equals("madar-app.base44.app") ||
                 host.equals("base44.app") ||
                 host.endsWith(".base44.app");
