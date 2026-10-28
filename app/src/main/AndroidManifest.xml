@@ -1,20 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.base44.apk">
+    package="com.hesabsarraf.app">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Permission for contacts -->
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-
-    <!-- Permission for camera -->
-    <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- Permission for reading photos on Android 12 and below -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="حساب صراف"
         android:roundIcon="@mipmap/ic_launcher"
@@ -23,7 +14,7 @@
         android:theme="@style/Theme.AppCompat.NoActionBar">
 
         <activity
-            android:name=".MainActivity"
+            android:name="com.base44.apk.MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
