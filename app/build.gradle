@@ -3,15 +3,16 @@ plugins {
 }
 
 android {
-    namespace 'com.base44.apk'
+    namespace 'com.hesabsarraf.app'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.base44.apk"
+        // Stable package ID for the first public release.
+        applicationId "com.hesabsarraf.app"
         minSdk 21
         targetSdk 34
 
-        versionCode 1
+        versionCode 2
         versionName "1.0.1"
     }
 
