@@ -41,10 +41,10 @@ jobs:
 
       - name: تنظیم نسخه APK
         run: |
-          sed -i 's/versionCode [0-9]*/versionCode 1/' app/build.gradle
+          sed -i 's/versionCode [0-9]*/versionCode 2/' app/build.gradle
           sed -i 's/versionName "[^"]*"/versionName "1.0.1"/' app/build.gradle
 
-          echo "versionCode = 1"
+          echo "versionCode = 2"
           echo "versionName = 1.0.1"
 
       - name: بررسی و آماده‌سازی آیکون برنامه
@@ -112,6 +112,17 @@ jobs:
       - name: بررسی فایل APK
         run: |
           find app/build/outputs/apk/release -type f -name "*.apk" -print
+
+      - name: اعتبارسنجی امضای APK انتشار
+        run: |
+          APK_FILE="app/build/outputs/apk/release/Hesab-Sarraf-1.0.1.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "خطا: ابزار apksigner پیدا نشد."
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "$APK_FILE"
+          echo "تأیید شد: APK از نظر ساختار امضا قابل اعتبارسنجی است."
 
       - name: آپلود APK
         uses: actions/upload-artifact@v4
