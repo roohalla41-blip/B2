@@ -1,0 +1,55 @@
+name: B2 Web Preview (GitHub Pages)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - backup/a1-copy-review
+    paths:
+      - '**'
+      - '.github/workflows/b2-web-preview.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: b2-pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout B2 preview branch
+        uses: actions/checkout@v4
+        with:
+          ref: backup/a1-copy-review
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build B2 web app
+        run: npm run build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload B2 site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy B2 preview
+        id: deployment
+        uses: actions/deploy-pages@v4
