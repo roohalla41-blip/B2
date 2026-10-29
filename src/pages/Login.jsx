@@ -269,7 +269,7 @@ export default function Login() {
 
       // ── اگر ورود Supabase ناموفق بود و کاربر یافت نشد (یا دیتابیس در دسترس نبود)،
       //    ورود محلی را امتحان کن — سپس مهاجرت بی‌صدا به Supabase ──
-      if (!result.success && (result.error === 'user_not_found' || result.error === 'rpc_error' || result.error === 'empty_response')) {
+      if (false && !result.success && (result.error === 'user_not_found' || result.error === 'rpc_error' || result.error === 'empty_response')) {
         const localResult = localLogin(identifier, password);
         if (localResult.success) {
           // مهاجرت بی‌صدا کاربر محلی به Supabase
@@ -312,7 +312,7 @@ export default function Login() {
               setLoading(false);
               return;
             }
-            window.location.replace(HOME_BY_ROLE[userRole] || '/');
+            navigate(HOME_BY_ROLE[userRole] || '/', { replace: true });
             return;
           }
 
@@ -341,7 +341,7 @@ export default function Login() {
             setLoading(false);
             return;
           }
-          window.location.replace(HOME_BY_ROLE[userRole] || '/');
+          navigate(HOME_BY_ROLE[userRole] || '/', { replace: true });
           return;
         }
       }
