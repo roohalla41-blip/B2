@@ -1,0 +1,42 @@
+name: B2 Web Build Check
+
+on:
+  push:
+    branches:
+      - fix/b2-auth-module-dependencies
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'vite.config.js'
+      - '.github/workflows/b2-web-build-check.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'vite.config.js'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: b2-web-build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout B2 only
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install
+      - name: Build B2 web app
+        run: npm run build
