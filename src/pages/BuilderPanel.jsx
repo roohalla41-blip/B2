@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Shield, Users, CreditCard, Lock, Bell, MessageSquare,
-  Server, Wallet, Crown, Upload, LogOut, Download, AlertTriangle, UserCog, Clock, Eye, Mail, Smartphone, Gamepad2, Zap, Globe, Store, FlaskConical, Database, Bot
+  Server, Wallet, Crown, Upload, LogOut, Download, AlertTriangle, UserCog, Clock, Eye, Mail, Smartphone, Images, Gamepad2, Zap, Globe, Store, FlaskConical, Database, Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -38,6 +38,7 @@ import LegacyDataMigrator from '@/components/sarraaf/LegacyDataMigrator';
 import AccountRecoveryManager from '@/components/sarraaf/AccountRecoveryManager';
 import TrialManager from '@/components/sarraaf/TrialManager';
 import MobileLayoutPreview from '@/components/sarraaf/MobileLayoutPreview';
+import LayoutHexLibrary from '@/components/sarraaf/LayoutHexLibrary';
 import { lazy } from 'react';
 const Assistant = lazy(() => import('@/pages/Assistant'));
 import UCManager from '@/components/sarraaf/UCManager';
@@ -172,6 +173,12 @@ const TAB_GROUPS = [
     icon: Smartphone,
     value: 'layout_preview',
     description: 'پیش‌نمایش چیدمان موبایل',
+  },
+  {
+    label: '۲۲ · آزمایشگاه چیدمان',
+    icon: Images,
+    value: 'layout_hex',
+    description: 'کتابخانه ابری تصاویر مرجع HEX',
   },
   {
     label: 'هوش مثنوی',
@@ -482,6 +489,13 @@ export default function BuilderPanel() {
         <TabsContent value="layout_preview">
           <MobileLayoutPreview />
         </TabsContent>
+
+        {/* کتابخانه تصاویر مرجع HEX — فقط سازنده اصلی */}
+        {isFullCreator && (
+          <TabsContent value="layout_hex">
+            <LayoutHexLibrary />
+          </TabsContent>
+        )}
 
         {/* هوش مثنوی — دستیار هوشمند آزمایشی */}
         <TabsContent value="masnavi_ai">
