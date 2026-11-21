@@ -14,6 +14,11 @@ on:
         required: true
         default: "1.0.0"
         type: string
+      publish_to_mother:
+        description: Publish the APK to the Mother website (requires Mother Supabase secrets)
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -105,6 +110,78 @@ jobs:
           path: dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk
           if-no-files-found: error
           retention-days: 90
+
+
+      - name: Publish APK to Mother marketplace
+        if: ${{ inputs.publish_to_mother }}
+        working-directory: .
+        env:
+          MOTHER_SUPABASE_URL: ${{ secrets.MOTHER_SUPABASE_URL }}
+          MOTHER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MOTHER_SUPABASE_SERVICE_ROLE_KEY }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$MOTHER_SUPABASE_URL" || { echo "Missing MOTHER_SUPABASE_URL secret"; exit 1; }
+          test -n "$MOTHER_SUPABASE_SERVICE_ROLE_KEY" || { echo "Missing MOTHER_SUPABASE_SERVICE_ROLE_KEY secret"; exit 1; }
+          APK="dist/clinic-management/$RELEASE_VERSION/Clinic-Management-v$RELEASE_VERSION.apk"
+          test -s "$APK"
+          OBJECT_PATH="apps/clinic-management/$RELEASE_VERSION/Clinic-Management-v$RELEASE_VERSION.apk"
+          curl --fail --silent --show-error \
+            -X POST "$MOTHER_SUPABASE_URL/storage/v1/object/madar-files/$OBJECT_PATH" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            -H "x-upsert: true" \
+            --data-binary "@$APK"
+          DOWNLOAD_URL="$MOTHER_SUPABASE_URL/storage/v1/object/public/madar-files/$OBJECT_PATH"
+          APP_PAYLOAD="$(jq -n --arg v "$RELEASE_VERSION" --arg url "$DOWNLOAD_URL" '{
+            name: "مدیریت مطب",
+            slug: "clinic-management",
+            tagline: "سامانه مدیریت مطب و خدمات درمانی",
+            description: "نسخه اندروید برنامه مدیریت مطب.",
+            version: $v,
+            category: "tools",
+            status: "published",
+            is_new: true,
+            show_on_homepage: false,
+            download_url: $url
+          }')"
+          APP_RESPONSE="$(curl --fail --silent --show-error \
+            -X POST "$MOTHER_SUPABASE_URL/rest/v1/apps?on_conflict=slug" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates,return=representation" \
+            -d "$APP_PAYLOAD")"
+          APP_ID="$(echo "$APP_RESPONSE" | jq -r '.[0].id // empty')"
+          test -n "$APP_ID" || { echo "Could not resolve clinic-management app record in Mother database"; exit 1; }
+          curl --fail --silent --show-error -X PATCH \
+            "$MOTHER_SUPABASE_URL/rest/v1/releases?app_id=eq.$APP_ID&is_latest=eq.true" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"is_latest":false,"status":"outdated"}'
+          RELEASE_PAYLOAD="$(jq -n --arg id "$APP_ID" --arg v "$RELEASE_VERSION" --arg url "$DOWNLOAD_URL" --arg file "Clinic-Management-v$RELEASE_VERSION.apk" '{
+            app_id: $id,
+            type: "android_apk",
+            label: "نسخه اندروید",
+            version: $v,
+            file_name: $file,
+            download_url: $url,
+            status: "active",
+            is_latest: true,
+            compatibility: "Android"
+          }')"
+          curl --fail --silent --show-error \
+            -X POST "$MOTHER_SUPABASE_URL/rest/v1/releases" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "$RELEASE_PAYLOAD"
+          echo "Published clinic-management v$RELEASE_VERSION to the Mother app catalog."
 
       - name: Remove temporary signing file
         if: always()
