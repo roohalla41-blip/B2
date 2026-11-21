@@ -7,8 +7,8 @@
   "androidProjectPath": "apps/clinic-management/android",
   "artifactName": "Clinic-Management",
   "releasePath": "releases/clinic-management",
-  "signingSecretPrefix": "CLINIC_",
-  "signingIdentity": "new-clinic-only-keystore-pending-confirmation",
+  "signingSecretPrefix": "SHARED_B2_KEYSTORE_SECRETS",
+  "signingIdentity": "shared-existing-b2-keystore-pending-clinic-certificate-compatibility-check",
   "motherPublication": {
     "enabled": true,
     "status": "requires-mother-supabase-secrets-and-clinic-source"
