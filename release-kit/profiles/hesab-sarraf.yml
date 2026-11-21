@@ -1,0 +1,16 @@
+product: hesab-sarraf
+display_name: "حساب صراف"
+targets:
+  android:
+    source: repository-root
+    workflow: .github/workflows/build-apk.yml
+    package_id: com.hesabsarraf.app
+    output: Hesab-Sarraf-1.0.1.apk
+    signing: existing-android-secrets
+    status: existing-build-configuration
+  windows:
+    source: apps/hesab-sarraf/windows
+    workflow: .github/workflows/hesab-sarraf-windows.yml
+    output: Hesab-Sarraf-Setup
+    signing: windows-authenticode-provider-required
+    status: source-import-required
