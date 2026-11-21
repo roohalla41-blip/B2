@@ -1,13 +1,16 @@
 {
   "slug": "clinic-management",
   "displayName": "مدیریت مطب",
-  "applicationId": "com.madar.clinicmanagement",
+  "applicationId": null,
   "versionName": "1.0.0",
   "versionCode": 1,
   "androidProjectPath": "apps/clinic-management/android",
   "artifactName": "Clinic-Management",
   "releasePath": "releases/clinic-management",
   "signingSecretPrefix": "CLINIC_",
-  "signingIdentity": "clinic-management-only",
-  "motherPublication": { "enabled": true, "status": "requires-mother-supabase-secrets-and-clinic-source" }
+  "signingIdentity": "new-clinic-only-keystore-pending-confirmation",
+  "motherPublication": {
+    "enabled": true,
+    "status": "requires-mother-supabase-secrets-and-clinic-source"
+  }
 }
