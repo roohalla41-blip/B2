@@ -24,6 +24,7 @@ Copy `.env.example` to a local `.env` only after the web build structure is rest
 - The current repository has no root `package.json`, so a reproducible web dependency/build pipeline is not yet present.
 - `AuthContext.jsx` imports `supabaseDirectAuth.js`, but that file is not present in the repository at the checked path.
 - The checked-in SQL candidates are not approved migrations. In particular, the schema contains ordinary-text password columns, and the combined migration replaces existing policies. These require security/schema review before anything is applied.
+- `SetupDatabase.jsx` currently displays a fixed default creator credential and calls a bootstrap action. Do not expose this setup route publicly until the backend bootstrap is changed to a secure, one-time process and the credential is removed from the UI.
 
 ## Safe rollout order
 
