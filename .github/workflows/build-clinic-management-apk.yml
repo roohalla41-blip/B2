@@ -1,0 +1,114 @@
+name: Build Clinic Management APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (for example 1.0.0)
+        required: true
+        default: "1.0.0"
+        type: string
+      publish_to_mother:
+        description: Publish the APK to the Mother website
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate clinic Android source
+        run: |
+          if [ ! -f apps/clinic-management/android/app/build.gradle ]; then
+            echo "Clinic Android source is not installed yet."
+            echo "Place the complete Android project under apps/clinic-management/android/ before running this workflow."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.7"
+      - name: Restore the shared Android signing key
+        working-directory: apps/clinic-management/android
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64" || { echo "Missing shared KEYSTORE_BASE64 secret"; exit 1; }
+          mkdir -p app
+          echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+          test -s app/release.keystore
+          chmod 600 app/release.keystore
+      - name: Build clinic release APK
+        working-directory: apps/clinic-management/android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle --no-daemon assembleRelease
+      - name: Verify APK signature
+        working-directory: apps/clinic-management/android
+        run: |
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)"
+          test -n "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+      - name: Prepare download
+        run: |
+          set -euo pipefail
+          mkdir -p "dist/clinic-management/${{ inputs.version }}"
+          cp "$(find apps/clinic-management/android/app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)" "dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Clinic-Management-v${{ inputs.version }}
+          path: dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk
+          if-no-files-found: error
+          retention-days: 90
+      - name: Remove temporary signing key
+        if: always()
+        working-directory: apps/clinic-management/android
+        run: rm -f app/release.keystore
+
+  publish-to-mother:
+    if: ${{ inputs.publish_to_mother }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Clinic-Management-v${{ inputs.version }}
+          path: downloaded
+      - name: Publish to Mother marketplace
+        env:
+          MOTHER_SUPABASE_URL: ${{ secrets.MOTHER_SUPABASE_URL }}
+          MOTHER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MOTHER_SUPABASE_SERVICE_ROLE_KEY }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$MOTHER_SUPABASE_URL"
+          test -n "$MOTHER_SUPABASE_SERVICE_ROLE_KEY"
+          APK="$(find downloaded -name '*.apk' -type f | head -n 1)"
+          test -n "$APK"
+          FILE_NAME="$(basename "$APK")"
+          OBJECT_PATH="apps/clinic-management/$RELEASE_VERSION/$FILE_NAME"
+          curl --fail --silent --show-error -X POST "$MOTHER_SUPABASE_URL/storage/v1/object/madar-files/$OBJECT_PATH" -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "Content-Type: application/vnd.android.package-archive" -H "x-upsert: true" --data-binary "@$APK"
+          DOWNLOAD_URL="$MOTHER_SUPABASE_URL/storage/v1/object/public/madar-files/$OBJECT_PATH"
+          APP_PAYLOAD="$(jq -n --arg u "$DOWNLOAD_URL" --arg v "$RELEASE_VERSION" '{name:"مدیریت مطب",slug:"clinic-management",description:"نسخه اندروید برنامه مدیریت مطب.",version:$v,status:"published",is_new:true,show_on_homepage:false,download_url:$u}')"
+          APP_RESPONSE="$(curl --fail --silent --show-error -X POST "$MOTHER_SUPABASE_URL/rest/v1/apps?on_conflict=slug" -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "Content-Type: application/json" -H "Prefer: resolution=merge-duplicates,return=representation" -d "$APP_PAYLOAD")"
+          APP_ID="$(echo "$APP_RESPONSE" | jq -r '.[0].id // empty')"
+          test -n "$APP_ID"
+          curl --fail --silent --show-error -X PATCH "$MOTHER_SUPABASE_URL/rest/v1/releases?app_id=eq.$APP_ID&is_latest=eq.true" -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "Content-Type: application/json" -H "Prefer: return=minimal" -d '{"is_latest":false,"status":"outdated"}'
+          RELEASE_PAYLOAD="$(jq -n --arg id "$APP_ID" --arg v "$RELEASE_VERSION" --arg f "$FILE_NAME" --arg u "$DOWNLOAD_URL" '{app_id:$id,type:"android_apk",label:"نسخه اندروید",version:$v,file_name:$f,download_url:$u,status:"active",is_latest:true,compatibility:"Android"}')"
+          curl --fail --silent --show-error -X POST "$MOTHER_SUPABASE_URL/rest/v1/releases" -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "Content-Type: application/json" -H "Prefer: return=minimal" -d "$RELEASE_PAYLOAD"
+          echo "Published Clinic Management v$RELEASE_VERSION to Mother."
