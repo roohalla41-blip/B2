@@ -1,0 +1,112 @@
+name: Build independent app APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Application to build
+        required: true
+        type: choice
+        options:
+          - clinic-management
+      version:
+        description: Release version (for example 1.0.0)
+        required: true
+        default: "1.0.0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ inputs.app }} APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate app registration and source
+        shell: bash
+        run: |
+          APP="${{ inputs.app }}"
+          if [ "$APP" != "clinic-management" ]; then
+            echo "Unsupported app slug: $APP"
+            exit 1
+          fi
+          if [ ! -f "apps/$APP/app-config.json" ]; then
+            echo "Missing app-config.json for $APP"
+            exit 1
+          fi
+          if [ ! -f "apps/$APP/android/gradlew" ]; then
+            echo "Clinic Android source is not installed yet."
+            echo "Expected a complete Gradle project at apps/clinic-management/android/"
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Restore clinic-only signing key
+        working-directory: apps/clinic-management/android
+        env:
+          CLINIC_KEYSTORE_BASE64: ${{ secrets.CLINIC_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          test -n "$CLINIC_KEYSTORE_BASE64" || {
+            echo "Missing CLINIC_KEYSTORE_BASE64 GitHub Actions secret."
+            exit 1
+          }
+          echo "$CLINIC_KEYSTORE_BASE64" | base64 --decode > clinic-release.keystore
+          test -s clinic-release.keystore
+          chmod 600 clinic-release.keystore
+
+      - name: Build signed release APK
+        working-directory: apps/clinic-management/android
+        env:
+          KEYSTORE_FILE: clinic-release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.CLINIC_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CLINIC_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.CLINIC_KEY_PASSWORD }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleRelease \
+            -PKEYSTORE_FILE="$KEYSTORE_FILE" \
+            -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" \
+            -PKEY_ALIAS="$KEY_ALIAS" \
+            -PKEY_PASSWORD="$KEY_PASSWORD" \
+            -PRELEASE_VERSION="$RELEASE_VERSION"
+
+      - name: Verify APK signature
+        working-directory: apps/clinic-management/android
+        shell: bash
+        run: |
+          APK="$(find . -path '*/build/outputs/apk/release/*.apk' -type f | head -n 1)"
+          test -n "$APK" || { echo "Release APK not found"; exit 1; }
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+
+      - name: Prepare downloadable artifact
+        shell: bash
+        run: |
+          mkdir -p "dist/clinic-management/${{ inputs.version }}"
+          APK="$(find apps/clinic-management/android -path '*/build/outputs/apk/release/*.apk' -type f | head -n 1)"
+          cp "$APK" "dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk"
+
+      - name: Upload downloadable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clinic-Management-v${{ inputs.version }}
+          path: dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Remove temporary signing file
+        if: always()
+        working-directory: apps/clinic-management/android
+        run: rm -f clinic-release.keystore
