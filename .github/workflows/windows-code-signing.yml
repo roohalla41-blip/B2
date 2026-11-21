@@ -1,0 +1,39 @@
+
+name: Windows Code Signing Setup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Prepare Windows signing environment
+    runs-on: windows-latest
+
+    steps:
+      - name: Verify Windows signing tools
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $signtool = Get-ChildItem `
+            "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+            -Filter signtool.exe `
+            -Recurse |
+            Select-Object -First 1
+
+          if (-not $signtool) {
+            throw "SignTool was not found."
+          }
+
+          Write-Host "Windows signing environment is ready."
+          Write-Host "SignTool: $($signtool.FullName)"
+
+      - name: Prepare signing configuration
+        shell: pwsh
+        run: |
+          Write-Host "B2 Windows signing infrastructure prepared."
+          Write-Host "No private keys or certificates were generated."
+          
