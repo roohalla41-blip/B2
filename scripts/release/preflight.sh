@@ -52,6 +52,8 @@ else
   echo "RESULT: SOURCE PREFLIGHT BLOCKED — no installer or fake artifact was produced"
 fi
 
-# Readiness reporting is informational: missing source is reported, not hidden
-# behind a fabricated successful build.
+# A blocked source tree must produce a failing preflight status.
+if [[ "$blocked" -ne 0 ]]; then
+  exit 1
+fi
 exit 0
