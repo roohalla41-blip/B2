@@ -1,0 +1,22 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*.key
+secrets/
+
+# Build outputs
+.gradle/
+build/
+app/build/
+dist/
+node_modules/
+*.apk
+*.aab
+*.exe
+*.msi
