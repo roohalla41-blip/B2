@@ -1,0 +1,30 @@
+name: Hesab Sarraf Source Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'app/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'supabase/**'
+      - '.env.example'
+      - '.github/workflows/hesab-sarraf-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check source readiness
+        run: bash scripts/release/preflight.sh
+
+      - name: Audit database SQL without executing it
+        run: bash scripts/database/audit-sql.sh
