@@ -9,5 +9,5 @@
   "releasePath": "releases/clinic-management",
   "signingSecretPrefix": "CLINIC_",
   "signingIdentity": "clinic-management-only",
-  "motherPublication": { "enabled": false, "status": "integration-pending" }
+  "motherPublication": { "enabled": true, "status": "requires-mother-supabase-secrets-and-clinic-source" }
 }
