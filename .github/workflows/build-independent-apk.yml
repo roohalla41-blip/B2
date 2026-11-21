@@ -1,21 +1,22 @@
-name: Build independent app APK
+name: Multi-app Android release center
 
 on:
   workflow_dispatch:
     inputs:
       app:
-        description: Application to build
+        description: Select an independent application
         required: true
         type: choice
         options:
+          - hesab-sarraf
           - clinic-management
       version:
-        description: Release version (for example 1.0.0)
+        description: Release version (for example 1.0.2)
         required: true
         default: "1.0.0"
         type: string
       publish_to_mother:
-        description: Publish the APK to the Mother website (requires Mother Supabase secrets)
+        description: Publish the APK to the Mother website
         required: true
         default: false
         type: boolean
@@ -24,166 +25,182 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build ${{ inputs.app }} APK
+  build-sarraf:
+    if: ${{ inputs.app == 'hesab-sarraf' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Validate app registration and source
-        shell: bash
-        run: |
-          APP="${{ inputs.app }}"
-          if [ "$APP" != "clinic-management" ]; then
-            echo "Unsupported app slug: $APP"
-            exit 1
-          fi
-          if [ ! -f "apps/$APP/app-config.json" ]; then
-            echo "Missing app-config.json for $APP"
-            exit 1
-          fi
-          if [ ! -f "apps/$APP/android/gradlew" ]; then
-            echo "Clinic Android source is not installed yet."
-            echo "Expected a complete Gradle project at apps/clinic-management/android/"
-            exit 1
-          fi
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+      - name: Restore the existing Sarraf keystore only
+        working-directory: apps/hesab-sarraf/android
+        env:
+          SARRAF_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          SARRAF_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SARRAF_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SARRAF_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          test -n "$SARRAF_KEYSTORE_BASE64" || { echo "Existing Sarraf keystore secret is missing"; exit 1; }
+          mkdir -p app
+          echo "$SARRAF_KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+          test -s app/release.keystore
+          chmod 600 app/release.keystore
+      - name: Set requested version and build
+        working-directory: apps/hesab-sarraf/android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RUN_NUMBER: ${{ github.run_number }}
+        shell: bash
+        run: |
+          CODE=$((1000000 + RUN_NUMBER))
+          sed -i "s/versionCode [0-9]*/versionCode $CODE/" app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$RELEASE_VERSION\"/" app/build.gradle
+          gradle --no-daemon assembleRelease
+      - name: Verify Sarraf APK signature
+        working-directory: apps/hesab-sarraf/android
+        run: |
+          APK="$(find app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)"
+          test -n "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+      - name: Prepare Sarraf download
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          mkdir -p "dist/hesab-sarraf/$RELEASE_VERSION"
+          cp "$(find apps/hesab-sarraf/android/app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)" "dist/hesab-sarraf/$RELEASE_VERSION/Hesab-Sarraf-v$RELEASE_VERSION.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hesab-Sarraf-v${{ inputs.version }}
+          path: dist/hesab-sarraf/${{ inputs.version }}/Hesab-Sarraf-v${{ inputs.version }}.apk
+          if-no-files-found: error
+          retention-days: 90
+      - name: Remove temporary Sarraf keystore
+        if: always()
+        working-directory: apps/hesab-sarraf/android
+        run: rm -f app/release.keystore
 
-      - name: Restore clinic-only signing key
+  build-clinic:
+    if: ${{ inputs.app == 'clinic-management' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate clinic Android source
+        run: |
+          if [ ! -f apps/clinic-management/android/app/build.gradle ]; then
+            echo "Clinic Android source is not installed yet."
+            echo "Add the complete clinic Android project under apps/clinic-management/android/."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+      - name: Restore clinic-only keystore
         working-directory: apps/clinic-management/android
         env:
           CLINIC_KEYSTORE_BASE64: ${{ secrets.CLINIC_KEYSTORE_BASE64 }}
         shell: bash
         run: |
-          test -n "$CLINIC_KEYSTORE_BASE64" || {
-            echo "Missing CLINIC_KEYSTORE_BASE64 GitHub Actions secret."
-            exit 1
-          }
-          echo "$CLINIC_KEYSTORE_BASE64" | base64 --decode > clinic-release.keystore
-          test -s clinic-release.keystore
-          chmod 600 clinic-release.keystore
-
-      - name: Build signed release APK
+          test -n "$CLINIC_KEYSTORE_BASE64" || { echo "Missing CLINIC_KEYSTORE_BASE64 secret"; exit 1; }
+          mkdir -p app
+          echo "$CLINIC_KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+          test -s app/release.keystore
+          chmod 600 app/release.keystore
+      - name: Build clinic APK with clinic-only credentials
         working-directory: apps/clinic-management/android
         env:
-          KEYSTORE_FILE: clinic-release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.CLINIC_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.CLINIC_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.CLINIC_KEY_PASSWORD }}
-          RELEASE_VERSION: ${{ inputs.version }}
-        shell: bash
-        run: |
-          chmod +x ./gradlew
-          ./gradlew --no-daemon assembleRelease \
-            -PKEYSTORE_FILE="$KEYSTORE_FILE" \
-            -PKEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" \
-            -PKEY_ALIAS="$KEY_ALIAS" \
-            -PKEY_PASSWORD="$KEY_PASSWORD" \
-            -PRELEASE_VERSION="$RELEASE_VERSION"
-
-      - name: Verify APK signature
+        run: gradle --no-daemon assembleRelease
+      - name: Verify clinic APK signature
         working-directory: apps/clinic-management/android
-        shell: bash
         run: |
-          APK="$(find . -path '*/build/outputs/apk/release/*.apk' -type f | head -n 1)"
-          test -n "$APK" || { echo "Release APK not found"; exit 1; }
+          APK="$(find app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)"
+          test -n "$APK"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-
-      - name: Prepare downloadable artifact
-        shell: bash
+      - name: Prepare clinic download
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
-          mkdir -p "dist/clinic-management/${{ inputs.version }}"
-          APK="$(find apps/clinic-management/android -path '*/build/outputs/apk/release/*.apk' -type f | head -n 1)"
-          cp "$APK" "dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk"
-
-      - name: Upload downloadable APK
-        uses: actions/upload-artifact@v4
+          mkdir -p "dist/clinic-management/$RELEASE_VERSION"
+          cp "$(find apps/clinic-management/android/app/build/outputs/apk/release -name '*.apk' -type f | head -n 1)" "dist/clinic-management/$RELEASE_VERSION/Clinic-Management-v$RELEASE_VERSION.apk"
+      - uses: actions/upload-artifact@v4
         with:
           name: Clinic-Management-v${{ inputs.version }}
           path: dist/clinic-management/${{ inputs.version }}/Clinic-Management-v${{ inputs.version }}.apk
           if-no-files-found: error
           retention-days: 90
+      - name: Remove temporary clinic keystore
+        if: always()
+        working-directory: apps/clinic-management/android
+        run: rm -f app/release.keystore
 
-
-      - name: Publish APK to Mother marketplace
-        if: ${{ inputs.publish_to_mother }}
-        working-directory: .
+  publish-to-mother:
+    if: ${{ inputs.publish_to_mother }}
+    needs: [build-sarraf, build-clinic]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download selected APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.app == 'hesab-sarraf' && format('Hesab-Sarraf-v{0}', inputs.version) || format('Clinic-Management-v{0}', inputs.version) }}
+          path: downloaded
+      - name: Publish APK to Mother marketplace (Supabase Storage + catalog)
         env:
           MOTHER_SUPABASE_URL: ${{ secrets.MOTHER_SUPABASE_URL }}
           MOTHER_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.MOTHER_SUPABASE_SERVICE_ROLE_KEY }}
+          APP_SLUG: ${{ inputs.app }}
           RELEASE_VERSION: ${{ inputs.version }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$MOTHER_SUPABASE_URL" || { echo "Missing MOTHER_SUPABASE_URL secret"; exit 1; }
           test -n "$MOTHER_SUPABASE_SERVICE_ROLE_KEY" || { echo "Missing MOTHER_SUPABASE_SERVICE_ROLE_KEY secret"; exit 1; }
-          APK="dist/clinic-management/$RELEASE_VERSION/Clinic-Management-v$RELEASE_VERSION.apk"
-          test -s "$APK"
-          OBJECT_PATH="apps/clinic-management/$RELEASE_VERSION/Clinic-Management-v$RELEASE_VERSION.apk"
-          curl --fail --silent --show-error \
-            -X POST "$MOTHER_SUPABASE_URL/storage/v1/object/madar-files/$OBJECT_PATH" \
+          APK="$(find downloaded -name '*.apk' -type f | head -n 1)"
+          test -n "$APK"
+          FILE_NAME="$(basename "$APK")"
+          OBJECT_PATH="apps/$APP_SLUG/$RELEASE_VERSION/$FILE_NAME"
+          curl --fail --silent --show-error -X POST "$MOTHER_SUPABASE_URL/storage/v1/object/madar-files/$OBJECT_PATH" \
             -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
             -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
             -H "Content-Type: application/vnd.android.package-archive" \
-            -H "x-upsert: true" \
-            --data-binary "@$APK"
+            -H "x-upsert: true" --data-binary "@$APK"
           DOWNLOAD_URL="$MOTHER_SUPABASE_URL/storage/v1/object/public/madar-files/$OBJECT_PATH"
-          APP_PAYLOAD="$(jq -n --arg v "$RELEASE_VERSION" --arg url "$DOWNLOAD_URL" '{
-            name: "مدیریت مطب",
-            slug: "clinic-management",
-            tagline: "سامانه مدیریت مطب و خدمات درمانی",
-            description: "نسخه اندروید برنامه مدیریت مطب.",
-            version: $v,
-            category: "tools",
-            status: "published",
-            is_new: true,
-            show_on_homepage: false,
-            download_url: $url
-          }')"
-          APP_RESPONSE="$(curl --fail --silent --show-error \
-            -X POST "$MOTHER_SUPABASE_URL/rest/v1/apps?on_conflict=slug" \
-            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: resolution=merge-duplicates,return=representation" \
-            -d "$APP_PAYLOAD")"
+          if [ "$APP_SLUG" = "hesab-sarraf" ]; then
+            APP_NAME="حساب صراف"
+            APP_DESCRIPTION="نسخه اندروید برنامه حساب صراف."
+          else
+            APP_NAME="مدیریت مطب"
+            APP_DESCRIPTION="نسخه اندروید برنامه مدیریت مطب."
+          fi
+          APP_PAYLOAD="$(jq -n --arg n "$APP_NAME" --arg s "$APP_SLUG" --arg d "$APP_DESCRIPTION" --arg v "$RELEASE_VERSION" --arg u "$DOWNLOAD_URL" '{name:$n,slug:$s,description:$d,version:$v,status:"published",is_new:true,show_on_homepage:false,download_url:$u}')"
+          APP_RESPONSE="$(curl --fail --silent --show-error -X POST "$MOTHER_SUPABASE_URL/rest/v1/apps?on_conflict=slug" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" -H "Prefer: resolution=merge-duplicates,return=representation" -d "$APP_PAYLOAD")"
           APP_ID="$(echo "$APP_RESPONSE" | jq -r '.[0].id // empty')"
-          test -n "$APP_ID" || { echo "Could not resolve clinic-management app record in Mother database"; exit 1; }
-          curl --fail --silent --show-error -X PATCH \
-            "$MOTHER_SUPABASE_URL/rest/v1/releases?app_id=eq.$APP_ID&is_latest=eq.true" \
-            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: return=minimal" \
+          test -n "$APP_ID" || { echo "Mother apps record could not be resolved"; exit 1; }
+          curl --fail --silent --show-error -X PATCH "$MOTHER_SUPABASE_URL/rest/v1/releases?app_id=eq.$APP_ID&is_latest=eq.true" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" -H "Prefer: return=minimal" \
             -d '{"is_latest":false,"status":"outdated"}'
-          RELEASE_PAYLOAD="$(jq -n --arg id "$APP_ID" --arg v "$RELEASE_VERSION" --arg url "$DOWNLOAD_URL" --arg file "Clinic-Management-v$RELEASE_VERSION.apk" '{
-            app_id: $id,
-            type: "android_apk",
-            label: "نسخه اندروید",
-            version: $v,
-            file_name: $file,
-            download_url: $url,
-            status: "active",
-            is_latest: true,
-            compatibility: "Android"
-          }')"
-          curl --fail --silent --show-error \
-            -X POST "$MOTHER_SUPABASE_URL/rest/v1/releases" \
-            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: return=minimal" \
-            -d "$RELEASE_PAYLOAD"
-          echo "Published clinic-management v$RELEASE_VERSION to the Mother app catalog."
-
-      - name: Remove temporary signing file
-        if: always()
-        working-directory: apps/clinic-management/android
-        run: rm -f clinic-release.keystore
+          RELEASE_PAYLOAD="$(jq -n --arg id "$APP_ID" --arg v "$RELEASE_VERSION" --arg f "$FILE_NAME" --arg u "$DOWNLOAD_URL" '{app_id:$id,type:"android_apk",label:"نسخه اندروید",version:$v,file_name:$f,download_url:$u,status:"active",is_latest:true,compatibility:"Android"}')"
+          curl --fail --silent --show-error -X POST "$MOTHER_SUPABASE_URL/rest/v1/releases" \
+            -H "Authorization: Bearer $MOTHER_SUPABASE_SERVICE_ROLE_KEY" -H "apikey: $MOTHER_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" -H "Prefer: return=minimal" -d "$RELEASE_PAYLOAD"
+          echo "Published $APP_SLUG v$RELEASE_VERSION to the Mother app catalog."
