@@ -1,0 +1,36 @@
+name: Clinic Management Source Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/clinic-management/**'
+      - '.github/workflows/clinic-management-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Report clinic source readiness
+        shell: bash
+        run: |
+          if [[ -f apps/clinic-management/android/settings.gradle ]]; then
+            echo "Android source present."
+          else
+            echo "::warning::Clinic Management Android source is not imported yet."
+          fi
+
+          if [[ -f apps/clinic-management/windows/package.json ]]; then
+            echo "Windows source present."
+          else
+            echo "::warning::Clinic Management Windows source is not imported yet."
+          fi
+
+          echo "No installer is built by this workflow."
