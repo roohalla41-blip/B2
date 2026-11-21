@@ -1,18 +1,23 @@
 # مدیریت مطب — برنامه مستقل اندروید
 
-این برنامه از حساب صراف کاملاً مستقل است.
+این برنامه کاملاً مستقل از حساب صراف است.
 
-## مسیرها
-- سورس و پروژه اندروید: `apps/clinic-management/android/`
-- تنظیمات برنامه: `apps/clinic-management/app-config.json`
-- خروجی‌های انتشار: `Clinic-Management-v<version>.apk` در GitHub Actions Artifact
+- سورس اندروید: `apps/clinic-management/android/`
+- تنظیمات: `apps/clinic-management/app-config.json`
+- شناسه پیشنهادی فعلی: `com.madar.clinicmanagement`؛ اگر برنامه قبلاً منتشر شده، باید applicationId اصلی آن حفظ شود.
+- فایل خروجی: `Clinic-Management-v<version>.apk`
 
-## شناسه و امضای مستقل
-- Android applicationId: `com.madar.clinicmanagement`
-- Keystore file در زمان build: `clinic-release.keystore`
-- Secrets موردنیاز در مخزن B2: `CLINIC_KEYSTORE_BASE64`, `CLINIC_KEYSTORE_PASSWORD`, `CLINIC_KEY_ALIAS`, `CLINIC_KEY_PASSWORD`
+## کلید امضای مخصوص مطب
 
-هیچ‌یک از متغیرهای امضای حساب صراف از این workflow خوانده نمی‌شود. Keystore و رمزها نباید در Git commit شوند.
+فقط این چهار GitHub Actions Secret برای این برنامه استفاده می‌شوند:
 
-## وضعیت فعلی
-این پوشه فقط زیرساخت و قرارداد ساخت را دارد؛ سورس واقعی برنامه مدیریت مطب هنوز باید در مسیر Android قرار بگیرد. تا آن زمان workflow عمداً build را با پیام روشن متوقف می‌کند.
+- `CLINIC_KEYSTORE_BASE64`
+- `CLINIC_KEYSTORE_PASSWORD`
+- `CLINIC_KEY_ALIAS`
+- `CLINIC_KEY_PASSWORD`
+
+این مقادیر از Secrets حساب صراف خوانده نمی‌شوند. Keystore باید یک‌بار ایجاد و پشتیبان امن آن نگهداری شود؛ در هر build همان کلید ثابت استفاده می‌شود. کلید یا رمز را داخل Git یا فایل‌های پروژه قرار ندهید.
+
+## وضعیت سورس
+
+در حال حاضر فقط مسیر مستقل و قرارداد ساخت آماده شده است. پروژه کامل Android مدیریت مطب هنوز در این پوشه قرار نگرفته؛ به همین دلیل اجرای build مطب تا اضافه‌شدن سورس کامل عمداً متوقف می‌شود.
