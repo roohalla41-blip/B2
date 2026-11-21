@@ -1,10 +1,12 @@
 # Independent Android apps registry
 
-Every application owns its own source, Android project, configuration, assets, release folder and signing identity.
+Each app has its own Android project, assets, configuration, release artifact and signing identity.
 
-## Registered application paths
+| App | Isolated path | Signing identity |
+|---|---|---|
+| حساب صراف | `apps/hesab-sarraf/` | Existing B2 signing secrets and keystore; preserved |
+| مدیریت مطب | `apps/clinic-management/` | New independent `CLINIC_*` secrets; never shares Sarraf key |
 
-- `clinic-management/`: clinic-management app; signing secrets use the `CLINIC_*` namespace only.
-- Future apps must receive a unique slug, applicationId, source path, output path and secret namespace before they are enabled in CI.
+Future apps must receive a unique slug, applicationId, source path, output path and secret namespace before being enabled in CI.
 
-The existing root-level B2 project and its current signing workflow are intentionally untouched. Do not move its files or reuse its signing secrets in this registry.
+The original root-level B2 project and its original workflow remain untouched. The new branch contains a separate copy of the Sarraf Android wrapper under its app-specific path. Do not move or delete the original root files.
