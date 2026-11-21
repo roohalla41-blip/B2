@@ -1,0 +1,16 @@
+product: clinic-management
+display_name: "مدیریت مطب"
+targets:
+  android:
+    source: apps/clinic-management/android
+    workflow: .github/workflows/clinic-management-android.yml
+    package_id: SET_AFTER_SOURCE_IMPORT
+    output: Clinic-Management.apk
+    signing: android-keystore-policy-required
+    status: source-import-required
+  windows:
+    source: apps/clinic-management/windows
+    workflow: .github/workflows/clinic-management-windows.yml
+    output: Clinic-Management-Setup
+    signing: windows-authenticode-provider-required
+    status: source-import-required
