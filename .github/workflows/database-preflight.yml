@@ -1,0 +1,33 @@
+name: B2 Database Safety Preflight
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'public/*.sql'
+      - 'supabase/**'
+      - 'scripts/database/**'
+      - '.github/workflows/database-preflight.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sql-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Static SQL safety audit
+        run: bash scripts/database/audit-sql.sh
+
+      - name: Confirm no local secrets are tracked
+        shell: bash
+        run: |
+          if git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(jks|keystore|p12|pfx|pem|key)$)'; then
+            echo "::error::A local environment or private signing file is tracked."
+            exit 1
+          fi
+          echo "No tracked local environment or private signing files found."
