@@ -48,13 +48,23 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
           test -s app/release.keystore
           chmod 600 app/release.keystore
-      - name: Build clinic release APK
+      - name: Set clinic version and build release APK
         working-directory: apps/clinic-management/android
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle --no-daemon assembleRelease
+          RELEASE_VERSION: ${{ inputs.version }}
+          RUN_NUMBER: ${{ github.run_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Eq 'versionCode[[:space:]]+[0-9]+' app/build.gradle || { echo "Clinic app/build.gradle must define versionCode"; exit 1; }
+          grep -Eq 'versionName[[:space:]]+"[^"]+"' app/build.gradle || { echo "Clinic app/build.gradle must define versionName"; exit 1; }
+          CODE=$((1000000 + RUN_NUMBER))
+          sed -i -E "s/versionCode[[:space:]]+[0-9]+/versionCode $CODE/" app/build.gradle
+          sed -i -E "s/versionName[[:space:]]+\"[^\"]*\"/versionName \"$RELEASE_VERSION\"/" app/build.gradle
+          gradle --no-daemon assembleRelease
       - name: Verify APK signature
         working-directory: apps/clinic-management/android
         run: |
