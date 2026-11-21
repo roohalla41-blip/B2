@@ -2,25 +2,33 @@
 
 Implementation is isolated on branch `feature/multi-app-apk-center`; the `main` branch and original root B2 workflow remain unchanged.
 
-## Separate app paths
-- `apps/hesab-sarraf/android/`: isolated copy of the existing account-sarraf Android wrapper. The package ID and existing B2 signing credentials are preserved.
-- `apps/clinic-management/android/`: separate Android project path for the clinic app. Its signing namespace is `CLINIC_*` only.
-- `apps/<new-slug>/`: reserved pattern for each future app.
+## Independent app projects and workflows
+- Hesab Sarraf Android project: `apps/hesab-sarraf/android/`
+- Clinic Management Android project: `apps/clinic-management/android/`
+- Dedicated workflow for Sarraf: `.github/workflows/build-hesab-sarraf-apk.yml`
+- Dedicated workflow for Clinic: `.github/workflows/build-clinic-management-apk.yml`
 
-## Build and download
-Run GitHub Actions workflow **Multi-app Android release center**, select the app and version. Each successful build uploads a named APK Artifact, downloadable from that workflow run for 90 days.
+Each app has its own manual GitHub Actions workflow, version input, build job, APK artifact, and optional Mother publication job. Each successful APK artifact is retained for 90 days.
 
-## Signing separation
-Sarraf uses only the existing B2 secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+## Shared signing identity
+Both workflows use the same existing B2 Android signing secrets:
+- `KEYSTORE_BASE64`
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
 
-Clinic uses only `CLINIC_KEYSTORE_BASE64`, `CLINIC_KEYSTORE_PASSWORD`, `CLINIC_KEY_ALIAS`, `CLINIC_KEY_PASSWORD`. The two applications build in separate jobs, and each job receives only its own signing secrets.
+The keystore is restored temporarily during the build and removed at the end. Never commit the keystore or passwords to the repository, and do not regenerate or replace the existing key.
+
+**Compatibility warning:** an already-published Android app must retain its original signing certificate for in-place updates. Before the first Clinic release, confirm whether Clinic has ever been distributed and compare its existing signing-certificate fingerprint with the shared key. If it was previously signed with another key, do not switch it to this shared key for an update release.
 
 ## Publish to Mother website
-Enable **Publish the APK to the Mother website** in the workflow. The publish job uploads the APK to the Mother Supabase Storage bucket `madar-files`, then updates the `apps` and `releases` catalog records. Configure these two repository Actions secrets first:
+Each app workflow includes an optional **Publish the APK to the Mother website** input. Configure these repository Actions secrets:
 - `MOTHER_SUPABASE_URL`
 - `MOTHER_SUPABASE_SERVICE_ROLE_KEY`
 
-The `madar-files` bucket must be public for the resulting public download URL to work. The service-role key remains only in GitHub Secrets.
+The workflow uploads the APK to the Supabase Storage bucket `madar-files` and updates the Mother `apps` and `releases` catalog. The bucket must be public for the generated public download URL to work. The service-role key remains only in GitHub Secrets.
 
-## Clinic app still needs two things
-The complete clinic Android source has not yet been placed under `apps/clinic-management/android/`, and the dedicated clinic keystore has not yet been created or registered in GitHub Secrets. If the clinic app has ever been released, its existing applicationId and signing key must be preserved; do not replace them with a new key.
+## Current readiness
+- Sarraf has its isolated Android project and uses the existing B2 signing identity.
+- Clinic has a separate workflow and isolated target path, but its complete Android source is not yet present. Its workflow intentionally stops until `apps/clinic-management/android/app/build.gradle` exists.
+- Workflow files have been added to this feature branch; a full GitHub Actions build and Mother publication have not yet been run end-to-end.
